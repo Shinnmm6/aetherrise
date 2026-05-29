@@ -3,6 +3,7 @@ const { prisma } = require('../../database/client');
 const { getOrCreatePlayer } = require('../../database/client');
 const { addItem, awardCoins, awardXP } = require('../../managers/playerManager');
 const { formatNumber } = require('../../utils/helpers');
+const { getRedis } = require('../../database/redis'); // Import here to use in multiple places
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -27,19 +28,26 @@ module.exports = {
       .addIntegerOption(o => o.setName('level').setDescription('The target level').setRequired(true).setMinValue(1).setMaxValue(1000))),
 
   async execute(interaction) {
-    // Only allow bot owner or admins
+    // 1. Always defer at the start to prevent 'InteractionAlreadyReplied' errors
+    await interaction.deferReply({ ephemeral: true });
+
     if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-      return interaction.editReply({ content: '❌ No permission.', ephemeral: true });
+      return interaction.editReply({ content: '❌ No permission.' });
     }
 
     const sub = interaction.options.getSubcommand();
+    const redis = getRedis();
 
     if (sub === 'give_coins') {
       const target = interaction.options.getUser('user');
       const amount = interaction.options.getInteger('amount');
       const player = await getOrCreatePlayer(target.id, target.username);
+      
       await awardCoins(player.id, amount);
-      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** coins to **${target.username}**.`)], ephemeral: true });
+      // Invalidate balance/profile cache
+      try { await redis.del(`player:${target.id}`); } catch (e) {} 
+      
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** coins to **${target.username}**.`)] });
     }
 
     if (sub === 'give_item') {
@@ -47,8 +55,12 @@ module.exports = {
       const item = interaction.options.getString('item');
       const qty = interaction.options.getInteger('quantity') || 1;
       const player = await getOrCreatePlayer(target.id, target.username);
+      
       await addItem(player.id, item, qty);
-      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${item}** to **${target.username}**.`)], ephemeral: true });
+      // Invalidate inventory cache
+      try { await redis.del(`inventory:${target.id}`); } catch (e) {}
+      
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${item}** to **${target.username}**.`)] });
     }
 
     if (sub === 'give_xp') {
@@ -56,18 +68,17 @@ module.exports = {
       const amount = interaction.options.getInteger('amount');
       const player = await getOrCreatePlayer(target.id, target.username);
       const { levelUps, newLevel } = await awardXP(player.id, amount);
-      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** XP to **${target.username}**.${levelUps.length ? ` Leveled up to **${newLevel}**!` : ''}`)], ephemeral: true });
+      
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** XP to **${target.username}**.${levelUps.length ? ` Leveled up to **${newLevel}**!` : ''}`)] });
     }
 
     if (sub === 'reset_cooldowns') {
       const target = interaction.options.getUser('user');
-      const { getRedis } = require('../../database/redis');
-      const redis = getRedis();
       const commands = ['hunt', 'fish', 'mine', 'explore', 'boss', 'dungeon', 'raid', 'work', 'crime', 'beg', 'search', 'daily', 'quest'];
       for (const cmd of commands) {
         try { await redis.del(`cd:${target.id}:${cmd}`); } catch {}
       }
-      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset all cooldowns for **${target.username}**.`)], ephemeral: true });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset all cooldowns for **${target.username}**.`)] });
     }
 
     if (sub === 'stats') {
@@ -86,7 +97,6 @@ module.exports = {
             { name: '🔥 Active Today', value: activeToday.toString(), inline: true },
             { name: '💰 Coins in Circulation', value: formatNumber(totalCoins._sum.coins || 0), inline: true },
           )],
-        ephemeral: true,
       });
     }
 
@@ -99,7 +109,7 @@ module.exports = {
 
       const player = await getOrCreatePlayer(target.id, target.username);
       await prisma.player.update({ where: { id: player.id }, data: { level, xp: totalXp } });
-      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Set **${target.username}** to Level **${level}**.`)], ephemeral: true });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Set **${target.username}** to Level **${level}**.`)] });
     }
   },
 };
