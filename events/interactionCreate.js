@@ -12,9 +12,9 @@ module.exports = {
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // 2. Defer the reply immediately to handle slow database/network responses
-    // This stops the 3-second timeout window and prevents "Unknown interaction" errors
-    await interaction.deferReply({ ephemeral: true });
+    // 2. Defer the reply immediately as PUBLIC (ephemeral: false)
+    // This allows everyone in the channel to see the bot's response
+    await interaction.deferReply({ ephemeral: false });
 
     try {
       // 3. Check for cooldowns
@@ -25,7 +25,7 @@ module.exports = {
         );
         
         if (onCooldown) {
-          // Use editReply because we already deferred
+          // Use editReply to show the cooldown message publicly
           return await interaction.editReply({
             embeds: [cooldownEmbed(`/${command.data.name}`, remaining)],
           });
@@ -44,7 +44,7 @@ module.exports = {
       
       const errEmbed = errorEmbed('Something went wrong. Please try again!');
       
-      // Always use editReply because we have already deferred the interaction
+      // Always use editReply
       try {
         await interaction.editReply({ embeds: [errEmbed] });
       } catch (followUpError) {
