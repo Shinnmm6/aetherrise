@@ -11,8 +11,10 @@ module.exports = {
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // GLOBAL DEFER: This handles "Thinking..." for ALL commands
-    await interaction.deferReply(); 
+    // SMART DEFER: Only defer if the interaction hasn't been touched yet
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply(); 
+    }
 
     try {
       if (command.cooldown) {
@@ -36,6 +38,7 @@ module.exports = {
       const errEmbed = errorEmbed('Something went wrong. Please try again!');
       
       try {
+        // Use editReply because we know the interaction is now deferred/replied
         await interaction.editReply({ embeds: [errEmbed] });
       } catch (e) { console.error(e); }
     }
