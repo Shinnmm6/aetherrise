@@ -1,8 +1,6 @@
-# Use the official Node.js image
 FROM node:22
 
-# Install dependencies needed by 'canvas' and Prisma
-# These are the system libraries required by the canvas package
+# Install dependencies for canvas and Prisma
 RUN apt-get update && apt-get install -y \
     build-essential \
     libcairo2-dev \
@@ -13,24 +11,19 @@ RUN apt-get update && apt-get install -y \
     libpixman-1-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory inside the container
 WORKDIR /app
 
-# Copy package files first (to optimize build cache)
+# Copy package files
 COPY package*.json ./
 
-# Copy the prisma folder to the container
-COPY prisma ./prisma/
-
-# Install npm dependencies
-RUN npm install
-
-# Generate the Prisma Client
-RUN npx prisma generate
-
-# Copy the rest of your app code
+# Copy everything (this includes your database/ folder)
 COPY . .
 
+# Install dependencies
+RUN npm install
+
+# Generate Prisma Client pointing to your specific schema file
+RUN npx prisma generate --schema=./database/schema.prisma
+
 # Start the bot
-# Make sure index.js is the correct entry point file for your project
 CMD ["node", "index.js"]
