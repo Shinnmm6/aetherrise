@@ -11,17 +11,18 @@ module.exports = {
     .setDescription('Admin tools')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand(sub => sub.setName('give_coins').setDescription('Give coins')
-      .addUserOption(o => o.setName('user').setRequired(true))
-      .addIntegerOption(o => o.setName('amount').setRequired(true)))
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
+      .addIntegerOption(o => o.setName('amount').setDescription('Amount to give').setRequired(true)))
     .addSubcommand(sub => sub.setName('give_item').setDescription('Give item')
-      .addUserOption(o => o.setName('user').setRequired(true))
-      .addStringOption(o => o.setName('item').setRequired(true))
-      .addIntegerOption(o => o.setName('quantity')))
-    // ... (keep your other subcommands here)
-    ,
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
+      .addStringOption(o => o.setName('item').setDescription('Item ID or name').setRequired(true))
+      .addIntegerOption(o => o.setName('quantity').setDescription('Quantity')))
+    .addSubcommand(sub => sub.setName('give_xp').setDescription('Give XP')
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
+      .addIntegerOption(o => o.setName('amount').setDescription('Amount of XP').setRequired(true))),
 
   async execute(interaction) {
-    // PUBLIC DEFER: This shows "AetherRise is thinking..." to everyone
+    // PUBLIC DEFER
     await interaction.deferReply(); 
 
     const sub = interaction.options.getSubcommand();
@@ -33,7 +34,7 @@ module.exports = {
       const player = await getOrCreatePlayer(target.id, target.username);
       await awardCoins(player.id, amount);
       try { await redis.del(`player:${target.id}`); } catch (e) {}
-      return interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`✅ Gave ${amount} coins to ${target.username}.`)] });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** coins to **${target.username}**.`)] });
     }
 
     if (sub === 'give_item') {
@@ -43,12 +44,9 @@ module.exports = {
       const player = await getOrCreatePlayer(target.id, target.username);
       
       await addItem(player.id, item, qty);
-      // FIX: Clearing cache makes the item usable immediately
       try { await redis.del(`inventory:${target.id}`); } catch (e) {}
       
       return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${item}** to **${target.username}**.`)] });
     }
-    
-    // ... (rest of your subcommands)
   },
 };
