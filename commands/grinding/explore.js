@@ -27,7 +27,7 @@ module.exports = {
     await regenEnergy(player);
 
     if (player.energy < 10) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xFF8800).setDescription(`⚡ You need **10 energy** to explore. You have **${player.energy}**.`)],
         ephemeral: true,
       });
@@ -84,6 +84,6 @@ module.exports = {
 
     if (hasPet) embed.setDescription(`🐾 **A WILD PET APPEARED!** 🐾\n*${world.name} holds many secrets...*`);
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

@@ -47,6 +47,6 @@ module.exports = {
       })
       .setFooter({ text: 'Next shift available in 30 minutes' });
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

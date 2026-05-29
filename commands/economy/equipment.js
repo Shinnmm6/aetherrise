@@ -51,6 +51,6 @@ module.exports = {
       )
       .setFooter({ text: 'Use /use <item> to equip gear from your inventory' });
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

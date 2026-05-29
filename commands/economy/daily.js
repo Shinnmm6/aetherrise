@@ -17,7 +17,7 @@ module.exports = {
 
     if (now - lastDaily < DAILY_COOLDOWN_MS) {
       const remaining = Math.ceil((DAILY_COOLDOWN_MS - (now - lastDaily)) / 3600000);
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xFF8800).setDescription(`⏰ Come back in **${remaining}h** for your next daily!`)],
         ephemeral: true,
       });
@@ -72,6 +72,6 @@ module.exports = {
     if (streak === 7) embed.setDescription('🌟 **7-day streak!** Keep it up for even bigger bonuses!');
     if (streak === 30) embed.setDescription('👑 **30-day streak! LEGENDARY dedication!**');
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

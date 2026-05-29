@@ -26,7 +26,7 @@ module.exports = {
 
     if (sub === 'list') {
       if (playerPets.length === 0) {
-        return interaction.reply({
+        return interaction.editReply({
           embeds: [new EmbedBuilder().setColor(0xAAAAAA).setDescription('🐾 You have no pets! Pets drop from hunting and exploring.\nCheck rare world drops!')],
         });
       }
@@ -46,7 +46,7 @@ module.exports = {
         .setDescription(lines.join('\n\n'))
         .setFooter({ text: 'Use /pets equip <name> to set active pet' });
 
-      return interaction.reply({ embeds: [embed] });
+      return interaction.editReply({ embeds: [embed] });
     }
 
     if (sub === 'equip') {
@@ -57,7 +57,7 @@ module.exports = {
       });
 
       if (!found) {
-        return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Pet "${query}" not found in your collection.`)], ephemeral: true });
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Pet "${query}" not found in your collection.`)], ephemeral: true });
       }
 
       // Deactivate all, activate chosen
@@ -65,7 +65,7 @@ module.exports = {
       await prisma.playerPet.update({ where: { id: found.id }, data: { isActive: true } });
 
       const pet = PETS[found.petId];
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(RARITIES[pet.rarity]?.color || 0x5865F2)
           .setDescription(`✅ **${found.name || pet.name}** is now your active companion!\n${pet.emoji} ${pet.passive}`)],
@@ -77,7 +77,7 @@ module.exports = {
       const found = playerPets.find(pp => pp.petId.includes(query) || PETS[pp.petId]?.name?.toLowerCase().includes(query));
 
       if (!found) {
-        return interaction.reply({ content: `❌ Pet not found.`, ephemeral: true });
+        return interaction.editReply({ content: `❌ Pet not found.`, ephemeral: true });
       }
 
       const pet = PETS[found.petId];
@@ -96,7 +96,7 @@ module.exports = {
           { name: '📖 Description', value: pet.desc, inline: false },
         );
 
-      return interaction.reply({ embeds: [embed] });
+      return interaction.editReply({ embeds: [embed] });
     }
   },
 };

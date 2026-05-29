@@ -46,7 +46,7 @@ module.exports = {
     await regenEnergy(player);
 
     if (player.energy < 3) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xFF8800).setDescription(`⚡ Need **3 energy** to fish. You have **${player.energy}**.`)],
         ephemeral: true,
       });
@@ -66,7 +66,7 @@ module.exports = {
       new ButtonBuilder().setCustomId('fish_reel').setLabel('🎣 REEL IT IN!').setStyle(ButtonStyle.Success).setDisabled(true)
     );
 
-    const msg = await interaction.reply({ embeds: [castEmbed], components: [row], fetchReply: true });
+    const msg = await interaction.editReply({ embeds: [castEmbed], components: [row], fetchReply: true });
 
     // Random wait 2–6 seconds before fish bites
     const waitTime = randomInt(2000, 6000);

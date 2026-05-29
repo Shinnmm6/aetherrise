@@ -33,7 +33,7 @@ module.exports = {
         return `${unlocked ? '✅' : '🔒'} ${world.name} ${current ? '*(current)*' : ''}\n  └ Lvl ${world.unlockLevel}+ | 💰x${world.coinMultiplier} | ✨x${world.xpMultiplier}`;
       });
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x5865F2)
           .setTitle('🗺️ World Map')
@@ -43,9 +43,9 @@ module.exports = {
     }
 
     const world = WORLDS[dest];
-    if (!world) return interaction.reply({ content: '❌ Invalid world.', ephemeral: true });
+    if (!world) return interaction.editReply({ content: '❌ Invalid world.', ephemeral: true });
     if (player.level < world.unlockLevel) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0xFF4444)
           .setDescription(`🔒 **${world.name}** requires **Level ${world.unlockLevel}**.\nYou are Level **${player.level}** (${world.unlockLevel - player.level} levels away).`)],
@@ -53,12 +53,12 @@ module.exports = {
       });
     }
     if (player.world === dest) {
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xAAAAAA).setDescription(`You are already in **${world.name}**!`)], ephemeral: true });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xAAAAAA).setDescription(`You are already in **${world.name}**!`)], ephemeral: true });
     }
 
     await prisma.player.update({ where: { id: player.id }, data: { world: dest } });
 
-    return interaction.reply({
+    return interaction.editReply({
       embeds: [new EmbedBuilder()
         .setColor(world.bgColor)
         .setTitle(`✈️ Arrived in ${world.name}!`)

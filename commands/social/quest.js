@@ -75,7 +75,7 @@ module.exports = {
         return `${badge} ${typeEmoji} **${quest.name}** [${progress}]\n  └ ${rewardStr}${pq.completed ? ' — `/quest claim ' + pq.id.slice(0, 8) + '`' : ''}`;
       }).filter(Boolean);
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x5865F2)
           .setTitle('📋 Your Quests')
@@ -88,10 +88,10 @@ module.exports = {
       const idPrefix = interaction.options.getString('id');
       const pq = await prisma.playerQuest.findFirst({ where: { playerId: player.id, id: { startsWith: idPrefix }, completed: true, claimed: false } });
 
-      if (!pq) return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ Quest not found, not complete, or already claimed.')], ephemeral: true });
+      if (!pq) return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ Quest not found, not complete, or already claimed.')], ephemeral: true });
 
       const quest = QUESTS[pq.questId];
-      if (!quest) return interaction.reply({ content: '❌ Quest data not found.', ephemeral: true });
+      if (!quest) return interaction.editReply({ content: '❌ Quest data not found.', ephemeral: true });
 
       await prisma.playerQuest.update({ where: { id: pq.id }, data: { claimed: true } });
 
@@ -106,7 +106,7 @@ module.exports = {
         levelUps.length ? `🎉 **Level Up → ${newLevel}!**` : null,
       ].filter(Boolean);
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0xFFD700)
           .setTitle(`🏆 Quest Complete: ${quest.name}`)

@@ -37,7 +37,7 @@ module.exports = {
       new ButtonBuilder().setCustomId('raid_join').setLabel('⚔️ Join Raid!').setStyle(ButtonStyle.Danger),
     );
 
-    const msg = await interaction.reply({ embeds: [buildLobbyEmbed()], components: [joinRow], fetchReply: true });
+    const msg = await interaction.editReply({ embeds: [buildLobbyEmbed()], components: [joinRow], fetchReply: true });
 
     const joinCollector = msg.createMessageComponentCollector({
       filter: i => i.customId === 'raid_join',

@@ -29,7 +29,7 @@ module.exports = {
   async execute(interaction) {
     // Only allow bot owner or admins
     if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-      return interaction.reply({ content: '❌ No permission.', ephemeral: true });
+      return interaction.editReply({ content: '❌ No permission.', ephemeral: true });
     }
 
     const sub = interaction.options.getSubcommand();
@@ -39,7 +39,7 @@ module.exports = {
       const amount = interaction.options.getInteger('amount');
       const player = await getOrCreatePlayer(target.id, target.username);
       await awardCoins(player.id, amount);
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** coins to **${target.username}**.`)], ephemeral: true });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** coins to **${target.username}**.`)], ephemeral: true });
     }
 
     if (sub === 'give_item') {
@@ -48,7 +48,7 @@ module.exports = {
       const qty = interaction.options.getInteger('quantity') || 1;
       const player = await getOrCreatePlayer(target.id, target.username);
       await addItem(player.id, item, qty);
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${item}** to **${target.username}**.`)], ephemeral: true });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${item}** to **${target.username}**.`)], ephemeral: true });
     }
 
     if (sub === 'give_xp') {
@@ -56,7 +56,7 @@ module.exports = {
       const amount = interaction.options.getInteger('amount');
       const player = await getOrCreatePlayer(target.id, target.username);
       const { levelUps, newLevel } = await awardXP(player.id, amount);
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** XP to **${target.username}**.${levelUps.length ? ` Leveled up to **${newLevel}**!` : ''}`)], ephemeral: true });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** XP to **${target.username}**.${levelUps.length ? ` Leveled up to **${newLevel}**!` : ''}`)], ephemeral: true });
     }
 
     if (sub === 'reset_cooldowns') {
@@ -67,7 +67,7 @@ module.exports = {
       for (const cmd of commands) {
         try { await redis.del(`cd:${target.id}:${cmd}`); } catch {}
       }
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset all cooldowns for **${target.username}**.`)], ephemeral: true });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset all cooldowns for **${target.username}**.`)], ephemeral: true });
     }
 
     if (sub === 'stats') {
@@ -77,7 +77,7 @@ module.exports = {
         prisma.player.count({ where: { updatedAt: { gte: new Date(Date.now() - 86400000) } } }),
       ]);
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x5865F2)
           .setTitle('📊 AetherRise Bot Stats')
@@ -99,7 +99,7 @@ module.exports = {
 
       const player = await getOrCreatePlayer(target.id, target.username);
       await prisma.player.update({ where: { id: player.id }, data: { level, xp: totalXp } });
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Set **${target.username}** to Level **${level}**.`)], ephemeral: true });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Set **${target.username}** to Level **${level}**.`)], ephemeral: true });
     }
   },
 };

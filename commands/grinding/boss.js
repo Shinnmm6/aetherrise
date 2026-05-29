@@ -17,7 +17,7 @@ module.exports = {
     const world = WORLDS[player.world] || WORLDS.forest;
 
     if (player.level < 5) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ Reach **Level 5** before challenging a world boss!')],
         ephemeral: true,
       });
@@ -38,7 +38,7 @@ module.exports = {
       )
       .setFooter({ text: 'Use Attack, Defend, Skill, or Flee!' });
 
-    await interaction.reply({ embeds: [previewEmbed] });
+    await interaction.editReply({ embeds: [previewEmbed] });
 
     // Small delay then start battle
     setTimeout(async () => {

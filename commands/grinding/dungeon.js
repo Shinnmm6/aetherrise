@@ -46,6 +46,6 @@ module.exports = {
     }
 
     embed.setFooter({ text: 'Use /dungeon <name> to enter a specific dungeon' });
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

@@ -32,7 +32,7 @@ module.exports = {
       await awardCoins(player.id, coins);
       await awardXP(player.id, 10);
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0xFFD700)
           .setTitle(`${response.emoji} Begging Success`)
@@ -40,7 +40,7 @@ module.exports = {
           .setFooter({ text: 'Next beg in 2 minutes' })],
       });
     } else {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x888888)
           .setTitle(`${response.emoji} No luck...`)

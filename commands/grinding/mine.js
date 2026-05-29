@@ -32,7 +32,7 @@ module.exports = {
     await regenEnergy(player);
 
     if (player.energy < 8) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xFF8800).setDescription(`⚡ Need **8 energy** to mine. You have **${player.energy}**.`)],
         ephemeral: true,
       });
@@ -79,7 +79,7 @@ module.exports = {
       .setDescription(`*Tap a tile to mine it. Some veins are richer than others!*\n\n**Attempts remaining: ${attempts}**\n💰 Coins mined: **${formatNumber(totalCoins)}**`)
       .setFooter({ text: 'You have 30 seconds to pick!' });
 
-    const msg = await interaction.reply({
+    const msg = await interaction.editReply({
       embeds: [buildEmbed()],
       components: buildGrid(),
       fetchReply: true,

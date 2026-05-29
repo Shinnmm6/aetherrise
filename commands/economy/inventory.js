@@ -33,7 +33,7 @@ module.exports = {
     }
 
     if (items.length === 0) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xAAAAAA).setDescription(`🎒 Your inventory is empty${filter !== 'all' ? ` (filter: ${filter})` : ''}!\nStart hunting with \`/hunt\`!`)],
         ephemeral: true,
       });
@@ -71,7 +71,7 @@ module.exports = {
       new ButtonBuilder().setCustomId('inv_next').setEmoji('➡️').setStyle(ButtonStyle.Secondary).setDisabled(p >= totalPages - 1),
     );
 
-    const msg = await interaction.reply({
+    const msg = await interaction.editReply({
       embeds: [buildEmbed(page)],
       components: totalPages > 1 ? [buildRow(page)] : [],
       fetchReply: true,

@@ -51,6 +51,6 @@ module.exports = {
       .addFields({ name: '═══ Found ═══', value: lines.join('\n') })
       .setFooter({ text: 'Next search in 5 minutes' });
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

@@ -12,7 +12,7 @@ module.exports = {
     const player = await getOrCreatePlayer(interaction.user.id, interaction.user.username);
 
     if (player.level < 100) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0xFF8800)
           .setTitle('✦ Prestige System')
@@ -45,7 +45,7 @@ module.exports = {
       new ButtonBuilder().setCustomId('prestige_cancel').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
     );
 
-    const msg = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
+    const msg = await interaction.editReply({ embeds: [embed], components: [row], fetchReply: true });
 
     const collector = msg.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000 });
     collector.on('collect', async (btn) => {

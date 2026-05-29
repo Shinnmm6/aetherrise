@@ -21,21 +21,21 @@ module.exports = {
     const found = inventory.find(i => i.itemId === query || i.itemId.includes(query));
 
     if (!found) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ You don't have **${query}** in your inventory.`)],
         ephemeral: true,
       });
     }
 
     const item = ITEMS[found.itemId];
-    if (!item) return interaction.reply({ content: '❌ Unknown item.', ephemeral: true });
+    if (!item) return interaction.editReply({ content: '❌ Unknown item.', ephemeral: true });
 
     // Prevent selling equipped items (check equipment)
     const equipment = await prisma.equipment.findUnique({ where: { playerId: player.id } });
     if (equipment) {
       const equippedIds = Object.values(equipment).filter(Boolean);
       if (equippedIds.includes(found.itemId)) {
-        return interaction.reply({
+        return interaction.editReply({
           embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ You cannot sell an equipped item. Unequip it first.`)],
           ephemeral: true,
         });
@@ -60,6 +60,6 @@ module.exports = {
       )
       .setFooter({ text: `Sell price is 70% of base value (${formatNumber(sellPrice)} each)` });
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

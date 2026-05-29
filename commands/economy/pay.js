@@ -17,15 +17,15 @@ module.exports = {
     const amount = interaction.options.getInteger('amount');
 
     if (target.id === interaction.user.id) {
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ You cannot pay yourself.')], ephemeral: true });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ You cannot pay yourself.')], ephemeral: true });
     }
     if (target.bot) {
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ You cannot pay bots.')], ephemeral: true });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ You cannot pay bots.')], ephemeral: true });
     }
 
     const sender = await getOrCreatePlayer(interaction.user.id, interaction.user.username);
     if (BigInt(sender.coins) < BigInt(amount)) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Insufficient funds. You have **${formatNumber(sender.coins)}** coins.`)],
         ephemeral: true,
       });
@@ -50,6 +50,6 @@ module.exports = {
       )
       .setFooter({ text: 'A 5% transaction tax keeps the economy healthy.' });
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

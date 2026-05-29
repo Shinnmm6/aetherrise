@@ -31,7 +31,7 @@ module.exports = {
         return `${r?.emoji || '📦'} **${item.name}** — 💰 ${formatNumber(item.value)} coins\n  └ ${item.desc}`;
       });
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0xFFD700)
           .setTitle('🛒 AetherRise Shop')
@@ -46,7 +46,7 @@ module.exports = {
 
     const success = await deductCoins(player.id, totalCost);
     if (!success) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Not enough coins! You need **${formatNumber(totalCost)}** coins.`)],
         ephemeral: true,
       });
@@ -54,7 +54,7 @@ module.exports = {
 
     await addItem(player.id, itemId, quantity);
 
-    return interaction.reply({
+    return interaction.editReply({
       embeds: [new EmbedBuilder()
         .setColor(0x00C851)
         .setDescription(`✅ Purchased **${item.name}** x${quantity} for 💰 **${formatNumber(totalCost)}** coins!`)],

@@ -52,7 +52,7 @@ module.exports = {
         .addFields({ name: '═══ Loot ═══', value: `💰 **+${formatNumber(reward)}** coins\n✨ +80 XP` })
         .setFooter({ text: 'Next crime in 1 hour' });
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.editReply({ embeds: [embed] });
     } else {
       const fine = Math.floor(Number(player.coins) * crime.fine);
       const actualFine = Math.min(fine, Number(player.coins));
@@ -65,7 +65,7 @@ module.exports = {
         .addFields({ name: '═══ Penalty ═══', value: `💸 **-${formatNumber(actualFine)}** coins fined` })
         .setFooter({ text: 'Crime doesn\'t always pay...' });
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.editReply({ embeds: [embed] });
     }
   },
 };

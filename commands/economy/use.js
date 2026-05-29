@@ -22,21 +22,21 @@ module.exports = {
     const found = inventory.find(i => i.itemId === query || i.itemId.includes(query));
 
     if (!found) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ You don't have **${query}** in your inventory.`)],
         ephemeral: true,
       });
     }
 
     if (found.quantity < quantity) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ You only have **${found.quantity}x ${found.itemId}**.`)],
         ephemeral: true,
       });
     }
 
     const item = ITEMS[found.itemId];
-    if (!item) return interaction.reply({ content: '❌ Unknown item.', ephemeral: true });
+    if (!item) return interaction.editReply({ content: '❌ Unknown item.', ephemeral: true });
 
     const results = [];
 
@@ -65,7 +65,7 @@ module.exports = {
       }
 
       const r = RARITIES[item.rarity];
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(r?.color || 0x00C851)
           .setTitle(`${item.emoji} Used ${item.name} x${quantity}!`)
@@ -85,7 +85,7 @@ module.exports = {
       const hasBig = drops.some(d => ['epic', 'legendary', 'void', 'celestial'].includes(d.rarity));
       const r = RARITIES[item.rarity];
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(hasBig ? RARITIES.legendary.color : r?.color || 0x5865F2)
           .setTitle(`📦 ${item.name} Opened!`)
@@ -104,14 +104,14 @@ module.exports = {
         create: { playerId: player.id, [slot]: found.itemId },
       });
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(RARITIES[item.rarity]?.color || 0x5865F2)
           .setDescription(`✅ Equipped **${item.name}** in your ${slot} slot!`)],
       });
     }
 
-    return interaction.reply({
+    return interaction.editReply({
       embeds: [new EmbedBuilder().setColor(0xFF8800).setDescription(`⚠️ **${item.name}** cannot be used directly.`)],
       ephemeral: true,
     });

@@ -91,7 +91,7 @@ module.exports = {
         return `${rInfo?.emoji || '📦'} **${r.name}** → ${r.result.qty}x result\n  └ Needs: ${ingList}\n  └ Fee: ${formatNumber(r.craftFee)} coins | +${r.xp} XP`;
       });
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0xFF8C00)
           .setTitle('🔨 Crafting Recipes')
@@ -103,11 +103,11 @@ module.exports = {
     if (sub === 'make') {
       const recipeId = interaction.options.getString('recipe');
       const recipe = RECIPES[recipeId];
-      if (!recipe) return interaction.reply({ content: '❌ Unknown recipe.', ephemeral: true });
+      if (!recipe) return interaction.editReply({ content: '❌ Unknown recipe.', ephemeral: true });
 
       // Check coin fee
       if (BigInt(player.coins) < BigInt(recipe.craftFee)) {
-        return interaction.reply({
+        return interaction.editReply({
           embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Need **${formatNumber(recipe.craftFee)}** coins crafting fee. You have **${formatNumber(player.coins)}**.`)],
           ephemeral: true,
         });
@@ -126,7 +126,7 @@ module.exports = {
       }
 
       if (missing.length > 0) {
-        return interaction.reply({
+        return interaction.editReply({
           embeds: [new EmbedBuilder()
             .setColor(0xFF4444)
             .setTitle('❌ Missing Ingredients')
@@ -160,7 +160,7 @@ module.exports = {
           ].filter(Boolean).join('\n'),
         });
 
-      return interaction.reply({ embeds: [embed] });
+      return interaction.editReply({ embeds: [embed] });
     }
   },
 

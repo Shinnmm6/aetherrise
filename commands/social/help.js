@@ -78,6 +78,6 @@ module.exports = {
         ),
     };
 
-    await interaction.reply({ embeds: [embeds[cat]] });
+    await interaction.editReply({ embeds: [embeds[cat]] });
   },
 };

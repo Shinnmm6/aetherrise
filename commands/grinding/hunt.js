@@ -19,7 +19,7 @@ module.exports = {
     await regenEnergy(player);
 
     if (player.energy < 5) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0xFF8800)
           .setDescription(`⚡ Not enough energy! You have **${player.energy}/5** needed.\nEnergy regenerates 1 per 5 minutes.`)],
@@ -41,7 +41,7 @@ module.exports = {
       const consolationXp = Math.floor(enemy.xp * 0.2);
       await awardXP(player.id, consolationXp);
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x666666)
           .setTitle(`💀 Defeated by ${enemy.emoji} ${enemy.name}`)
@@ -102,6 +102,6 @@ module.exports = {
       embed.addFields({ name: `🏆 Achievement Unlocked!`, value: `${ach.emoji} **${ach.name}** — ${ach.desc}` });
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

@@ -44,7 +44,7 @@ module.exports = {
         : listings;
 
       if (filtered.length === 0) {
-        return interaction.reply({
+        return interaction.editReply({
           embeds: [new EmbedBuilder().setColor(0xAAAAAA).setDescription('📭 No listings found. List items with `/market list`!')],
         });
       }
@@ -56,7 +56,7 @@ module.exports = {
         return `${r?.emoji} **${item?.name || l.itemId}** x${l.quantity} — 💰 **${formatNumber(l.price)}** — *${l.seller.username}* — ⏳${hoursLeft}h\n  └ ID: \`${l.id.slice(0, 8)}\``;
       });
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x5865F2)
           .setTitle('🏪 AetherRise Market')
@@ -72,13 +72,13 @@ module.exports = {
 
       const invItem = await prisma.inventoryItem.findFirst({ where: { playerId: player.id, itemId: { contains: query } } });
       if (!invItem || invItem.quantity < quantity) {
-        return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ Item not found in inventory or insufficient quantity.')], ephemeral: true });
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ Item not found in inventory or insufficient quantity.')], ephemeral: true });
       }
 
       const item = ITEMS[invItem.itemId];
       const tax = Math.floor(price * MARKET_TAX);
       if (BigInt(player.coins) < BigInt(tax)) {
-        return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Need **${formatNumber(tax)}** coins for the listing fee.`)], ephemeral: true });
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Need **${formatNumber(tax)}** coins for the listing fee.`)], ephemeral: true });
       }
 
       await removeItem(player.id, invItem.itemId, quantity);
@@ -90,7 +90,7 @@ module.exports = {
       });
 
       const r = RARITIES[item?.rarity || 'common'];
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x00C851)
           .setTitle('📤 Item Listed!')
@@ -111,11 +111,11 @@ module.exports = {
         include: { seller: true },
       });
 
-      if (!listing) return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ Listing not found or expired.')], ephemeral: true });
-      if (listing.sellerId === player.id) return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ You cannot buy your own listing.')], ephemeral: true });
+      if (!listing) return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ Listing not found or expired.')], ephemeral: true });
+      if (listing.sellerId === player.id) return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription('❌ You cannot buy your own listing.')], ephemeral: true });
 
       if (BigInt(player.coins) < listing.price) {
-        return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Need **${formatNumber(listing.price)}** coins.`)], ephemeral: true });
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Need **${formatNumber(listing.price)}** coins.`)], ephemeral: true });
       }
 
       await prisma.player.update({ where: { id: player.id }, data: { coins: { decrement: listing.price } } });
@@ -126,7 +126,7 @@ module.exports = {
       const item = ITEMS[listing.itemId];
       const r = RARITIES[item?.rarity || 'common'];
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x00C851)
           .setTitle('✅ Purchase Complete!')
@@ -143,7 +143,7 @@ module.exports = {
       });
 
       if (listings.length === 0) {
-        return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xAAAAAA).setDescription('📭 You have no active listings.')], ephemeral: true });
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xAAAAAA).setDescription('📭 You have no active listings.')], ephemeral: true });
       }
 
       const lines = listings.map(l => {
@@ -153,7 +153,7 @@ module.exports = {
         return `${r?.emoji} **${item?.name}** x${l.quantity} — 💰 ${formatNumber(l.price)} — ⏳${hoursLeft}h — ID: \`${l.id.slice(0, 8)}\``;
       });
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle('📋 Your Listings').setDescription(lines.join('\n'))],
         ephemeral: true,
       });
