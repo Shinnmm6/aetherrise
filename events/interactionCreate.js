@@ -6,18 +6,14 @@ const chalk = require('chalk');
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
-    // 1. Only process chat input commands (slash commands)
     if (!interaction.isChatInputCommand()) return;
 
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // 2. Defer the reply immediately as PUBLIC (ephemeral: false)
-    // This allows everyone in the channel to see the bot's response
-    await interaction.deferReply({ ephemeral: false });
+    // REMOVED: await interaction.deferReply() is now handled inside individual command files
 
     try {
-      // 3. Check for cooldowns
       if (command.cooldown) {
         const { onCooldown, remaining } = await checkCooldown(
           interaction.user.id,
@@ -25,31 +21,28 @@ module.exports = {
         );
         
         if (onCooldown) {
-          // Use editReply to show the cooldown message publicly
-          return await interaction.editReply({
+          return await interaction.reply({
             embeds: [cooldownEmbed(`/${command.data.name}`, remaining)],
+            ephemeral: true,
           });
         }
-        
-        // Set new cooldown
         await setCooldown(interaction.user.id, command.data.name, command.cooldown);
       }
 
-      // 4. Execute the actual command logic
       await command.execute(interaction);
 
     } catch (error) {
-      // 5. Unified Error Handling
-      console.error(chalk.red(`Error in /${command.data.name}:`), error);
-      
+      console.error(chalk.red(`Error in /${command.commandName}:`), error);
       const errEmbed = errorEmbed('Something went wrong. Please try again!');
       
-      // Always use editReply
+      // Use reply if not deferred, otherwise editReply
       try {
-        await interaction.editReply({ embeds: [errEmbed] });
-      } catch (followUpError) {
-        console.error(chalk.red('Failed to send error message:'), followUpError);
-      }
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply({ embeds: [errEmbed] });
+        } else {
+          await interaction.reply({ embeds: [errEmbed], ephemeral: true });
+        }
+      } catch (e) { console.error(e); }
     }
   },
 };
