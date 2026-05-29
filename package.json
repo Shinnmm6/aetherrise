@@ -6,9 +6,10 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "db:push": "prisma db push",
-    "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "db:generate": "prisma generate --schema=./database/schema.prisma",
+    "db:push": "prisma db push --schema=./database/schema.prisma --accept-data-loss",
+    "db:setup": "prisma generate --schema=./database/schema.prisma && prisma db push --schema=./database/schema.prisma --accept-data-loss",
+    "db:studio": "prisma studio --schema=./database/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
