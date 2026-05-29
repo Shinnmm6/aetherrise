@@ -30,6 +30,7 @@ module.exports = {
       .setDescription(lines.join('\n\n'))
       .setFooter({ text: `${unlockedIds.size}/${Object.keys(ACHIEVEMENTS).length} unlocked` });
 
-    await interaction.reply({ embeds: [embed] });
+    // FIX: Changed .reply() to .editReply()
+    await interaction.editReply({ embeds: [embed] });
   },
 };
