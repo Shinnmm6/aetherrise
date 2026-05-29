@@ -11,7 +11,8 @@ module.exports = {
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // REMOVED: await interaction.deferReply() is now handled inside individual command files
+    // GLOBAL DEFER: This handles "Thinking..." for ALL commands
+    await interaction.deferReply(); 
 
     try {
       if (command.cooldown) {
@@ -21,9 +22,8 @@ module.exports = {
         );
         
         if (onCooldown) {
-          return await interaction.reply({
+          return await interaction.editReply({
             embeds: [cooldownEmbed(`/${command.data.name}`, remaining)],
-            ephemeral: true,
           });
         }
         await setCooldown(interaction.user.id, command.data.name, command.cooldown);
@@ -32,16 +32,11 @@ module.exports = {
       await command.execute(interaction);
 
     } catch (error) {
-      console.error(chalk.red(`Error in /${command.commandName}:`), error);
+      console.error(chalk.red(`Error in /${interaction.commandName}:`), error);
       const errEmbed = errorEmbed('Something went wrong. Please try again!');
       
-      // Use reply if not deferred, otherwise editReply
       try {
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply({ embeds: [errEmbed] });
-        } else {
-          await interaction.reply({ embeds: [errEmbed], ephemeral: true });
-        }
+        await interaction.editReply({ embeds: [errEmbed] });
       } catch (e) { console.error(e); }
     }
   },

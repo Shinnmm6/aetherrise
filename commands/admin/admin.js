@@ -1,7 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { prisma } = require('../../database/client');
 const { getOrCreatePlayer } = require('../../database/client');
-const { addItem, awardCoins, awardXP } = require('../../managers/playerManager');
+const { addItem, awardCoins } = require('../../managers/playerManager');
 const { formatNumber } = require('../../utils/helpers');
 const { getRedis } = require('../../database/redis');
 
@@ -22,9 +21,7 @@ module.exports = {
       .addIntegerOption(o => o.setName('amount').setDescription('Amount of XP').setRequired(true))),
 
   async execute(interaction) {
-    // PUBLIC DEFER
-    await interaction.deferReply(); 
-
+    // NO DEFER HERE: interactionCreate.js already handled it!
     const sub = interaction.options.getSubcommand();
     const redis = getRedis();
 
