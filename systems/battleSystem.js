@@ -1,8 +1,8 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { WORLDS, RARITIES } = require('../config/gameData');
 const { prisma } = require('../database/client');
-const { getPlayerStats, awardXP, awardCoins, checkAchievements } = require('./playerManager');
-const { rollWorldDrop } = require('./lootManager');
+const { getPlayerStats, awardXP, awardCoins, checkAchievements } = require('../managers/playerManager');
+const { rollWorldDrop } = require('../managers/lootManager');
 const { randomInt, formatNumber, progressBar } = require('../utils/helpers');
 
 // ============================================================
@@ -168,7 +168,7 @@ async function startBossBattle(interaction, player, bossData) {
       await awardCoins(player.id, coinGain);
       await prisma.player.update({ where: { id: player.id }, data: { bossesKilled: { increment: 1 } } });
 
-      const { rollBossDrops } = require('./lootManager');
+      const { rollBossDrops } = require('../managers/lootManager');
       const drops = await rollBossDrops(player.id, player.world, stats.luckBonus);
 
       const dropLines = drops.map(d => {
