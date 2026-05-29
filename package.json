@@ -4,11 +4,10 @@
   "description": "AetherRise - Discord Economy RPG Bot",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "npm install && prisma generate --schema=./database/schema.prisma && prisma db push --schema=./database/schema.prisma --accept-data-loss && node index.js",
     "dev": "nodemon index.js",
     "db:generate": "prisma generate --schema=./database/schema.prisma",
     "db:push": "prisma db push --schema=./database/schema.prisma --accept-data-loss",
-    "db:setup": "prisma generate --schema=./database/schema.prisma && prisma db push --schema=./database/schema.prisma --accept-data-loss",
     "db:studio": "prisma studio --schema=./database/schema.prisma"
   },
   "dependencies": {
