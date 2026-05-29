@@ -10,21 +10,21 @@ module.exports = {
     .setDescription('Admin tools (bot owner only)')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand(sub => sub.setName('give_coins').setDescription('Give coins to a player')
-      .addUserOption(o => o.setName('user').setRequired(true))
-      .addIntegerOption(o => o.setName('amount').setRequired(true).setMinValue(1)))
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
+      .addIntegerOption(o => o.setName('amount').setDescription('Amount of coins to give').setRequired(true).setMinValue(1)))
     .addSubcommand(sub => sub.setName('give_item').setDescription('Give an item to a player')
-      .addUserOption(o => o.setName('user').setRequired(true))
-      .addStringOption(o => o.setName('item').setRequired(true))
-      .addIntegerOption(o => o.setName('quantity').setMinValue(1)))
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
+      .addStringOption(o => o.setName('item').setDescription('The item ID or name').setRequired(true))
+      .addIntegerOption(o => o.setName('quantity').setDescription('How many to give').setMinValue(1)))
     .addSubcommand(sub => sub.setName('give_xp').setDescription('Give XP to a player')
-      .addUserOption(o => o.setName('user').setRequired(true))
-      .addIntegerOption(o => o.setName('amount').setRequired(true).setMinValue(1)))
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
+      .addIntegerOption(o => o.setName('amount').setDescription('Amount of XP to give').setRequired(true).setMinValue(1)))
     .addSubcommand(sub => sub.setName('reset_cooldowns').setDescription('Reset all cooldowns for a player')
-      .addUserOption(o => o.setName('user').setRequired(true)))
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true)))
     .addSubcommand(sub => sub.setName('stats').setDescription('Bot statistics'))
     .addSubcommand(sub => sub.setName('set_level').setDescription('Set a player\'s level')
-      .addUserOption(o => o.setName('user').setRequired(true))
-      .addIntegerOption(o => o.setName('level').setRequired(true).setMinValue(1).setMaxValue(1000))),
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
+      .addIntegerOption(o => o.setName('level').setDescription('The target level').setRequired(true).setMinValue(1).setMaxValue(1000))),
 
   async execute(interaction) {
     // Only allow bot owner or admins
