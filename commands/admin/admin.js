@@ -1,0 +1,105 @@
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { prisma } = require('../../database/client');
+const { getOrCreatePlayer } = require('../../database/client');
+const { addItem, awardCoins, awardXP } = require('../../managers/playerManager');
+const { formatNumber } = require('../../utils/helpers');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('admin')
+    .setDescription('Admin tools (bot owner only)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand(sub => sub.setName('give_coins').setDescription('Give coins to a player')
+      .addUserOption(o => o.setName('user').setRequired(true))
+      .addIntegerOption(o => o.setName('amount').setRequired(true).setMinValue(1)))
+    .addSubcommand(sub => sub.setName('give_item').setDescription('Give an item to a player')
+      .addUserOption(o => o.setName('user').setRequired(true))
+      .addStringOption(o => o.setName('item').setRequired(true))
+      .addIntegerOption(o => o.setName('quantity').setMinValue(1)))
+    .addSubcommand(sub => sub.setName('give_xp').setDescription('Give XP to a player')
+      .addUserOption(o => o.setName('user').setRequired(true))
+      .addIntegerOption(o => o.setName('amount').setRequired(true).setMinValue(1)))
+    .addSubcommand(sub => sub.setName('reset_cooldowns').setDescription('Reset all cooldowns for a player')
+      .addUserOption(o => o.setName('user').setRequired(true)))
+    .addSubcommand(sub => sub.setName('stats').setDescription('Bot statistics'))
+    .addSubcommand(sub => sub.setName('set_level').setDescription('Set a player\'s level')
+      .addUserOption(o => o.setName('user').setRequired(true))
+      .addIntegerOption(o => o.setName('level').setRequired(true).setMinValue(1).setMaxValue(1000))),
+
+  async execute(interaction) {
+    // Only allow bot owner or admins
+    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return interaction.reply({ content: '❌ No permission.', ephemeral: true });
+    }
+
+    const sub = interaction.options.getSubcommand();
+
+    if (sub === 'give_coins') {
+      const target = interaction.options.getUser('user');
+      const amount = interaction.options.getInteger('amount');
+      const player = await getOrCreatePlayer(target.id, target.username);
+      await awardCoins(player.id, amount);
+      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** coins to **${target.username}**.`)], ephemeral: true });
+    }
+
+    if (sub === 'give_item') {
+      const target = interaction.options.getUser('user');
+      const item = interaction.options.getString('item');
+      const qty = interaction.options.getInteger('quantity') || 1;
+      const player = await getOrCreatePlayer(target.id, target.username);
+      await addItem(player.id, item, qty);
+      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${item}** to **${target.username}**.`)], ephemeral: true });
+    }
+
+    if (sub === 'give_xp') {
+      const target = interaction.options.getUser('user');
+      const amount = interaction.options.getInteger('amount');
+      const player = await getOrCreatePlayer(target.id, target.username);
+      const { levelUps, newLevel } = await awardXP(player.id, amount);
+      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** XP to **${target.username}**.${levelUps.length ? ` Leveled up to **${newLevel}**!` : ''}`)], ephemeral: true });
+    }
+
+    if (sub === 'reset_cooldowns') {
+      const target = interaction.options.getUser('user');
+      const { getRedis } = require('../../database/redis');
+      const redis = getRedis();
+      const commands = ['hunt', 'fish', 'mine', 'explore', 'boss', 'dungeon', 'raid', 'work', 'crime', 'beg', 'search', 'daily', 'quest'];
+      for (const cmd of commands) {
+        try { await redis.del(`cd:${target.id}:${cmd}`); } catch {}
+      }
+      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset all cooldowns for **${target.username}**.`)], ephemeral: true });
+    }
+
+    if (sub === 'stats') {
+      const [playerCount, totalCoins, activeToday] = await Promise.all([
+        prisma.player.count(),
+        prisma.player.aggregate({ _sum: { coins: true } }),
+        prisma.player.count({ where: { updatedAt: { gte: new Date(Date.now() - 86400000) } } }),
+      ]);
+
+      return interaction.reply({
+        embeds: [new EmbedBuilder()
+          .setColor(0x5865F2)
+          .setTitle('📊 AetherRise Bot Stats')
+          .addFields(
+            { name: '👤 Total Players', value: playerCount.toString(), inline: true },
+            { name: '🔥 Active Today', value: activeToday.toString(), inline: true },
+            { name: '💰 Coins in Circulation', value: formatNumber(totalCoins._sum.coins || 0), inline: true },
+          )],
+        ephemeral: true,
+      });
+    }
+
+    if (sub === 'set_level') {
+      const target = interaction.options.getUser('user');
+      const level = interaction.options.getInteger('level');
+      const { xpForLevel } = require('../../config/gameData');
+      let totalXp = BigInt(0);
+      for (let l = 1; l < level; l++) totalXp += BigInt(xpForLevel(l));
+
+      const player = await getOrCreatePlayer(target.id, target.username);
+      await prisma.player.update({ where: { id: player.id }, data: { level, xp: totalXp } });
+      return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Set **${target.username}** to Level **${level}**.`)], ephemeral: true });
+    }
+  },
+};

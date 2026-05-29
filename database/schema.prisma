@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id              String   @id @default(cuid())
+  discordId       String   @unique
+  username        String
+  coins           BigInt   @default(0)
+  bank            BigInt   @default(0)
+  gems            Int      @default(0)         // prestige currency
+  xp              BigInt   @default(0)
+  level           Int      @default(1)
+  prestige        Int      @default(0)
+  energy          Int      @default(100)
+  maxEnergy       Int      @default(100)
+  world           String   @default("forest")
+  dailyStreak     Int      @default(0)
+  lastDaily       DateTime?
+  lastWork        DateTime?
+  lastHunt        DateTime?
+  lastFish        DateTime?
+  lastMine        DateTime?
+  lastExplore     DateTime?
+  lastCrime       DateTime?
+  lastBeg         DateTime?
+  lastQuest       DateTime?
+  totalDamage     BigInt   @default(0)
+  monstersKilled  Int      @default(0)
+  bossesKilled    Int      @default(0)
+  dungeonsCleared Int      @default(0)
+  title           String   @default("Wanderer")
+  badges          String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventory     InventoryItem[]
+  equipment     Equipment?
+  pets          PlayerPet[]
+  activePet     String?
+  quests        PlayerQuest[]
+  achievements  PlayerAchievement[]
+  guild         GuildMember?
+  marketListings MarketListing[]
+  tradesSent    Trade[]    @relation("TradesSent")
+  tradesReceived Trade[]   @relation("TradesReceived")
+  battlePass    BattlePass?
+
+  @@map("players")
+}
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  playerId  String
+  itemId    String
+  quantity  Int      @default(1)
+  durability Int?
+  enchants  String[] @default([])
+  createdAt DateTime @default(now())
+
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, itemId])
+  @@map("inventory_items")
+}
+
+model Equipment {
+  id        String  @id @default(cuid())
+  playerId  String  @unique
+  weapon    String?
+  armor     String?
+  helmet    String?
+  boots     String?
+  relic     String?
+  accessory String?
+
+  player    Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("equipment")
+}
+
+model PlayerPet {
+  id         String   @id @default(cuid())
+  playerId   String
+  petId      String
+  name       String?
+  level      Int      @default(1)
+  xp         Int      @default(0)
+  isShiny    Boolean  @default(false)
+  isActive   Boolean  @default(false)
+  evolution  Int      @default(0)
+  obtainedAt DateTime @default(now())
+
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("player_pets")
+}
+
+model PlayerQuest {
+  id         String   @id @default(cuid())
+  playerId   String
+  questId    String
+  progress   Int      @default(0)
+  completed  Boolean  @default(false)
+  claimed    Boolean  @default(false)
+  assignedAt DateTime @default(now())
+  completedAt DateTime?
+
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("player_quests")
+}
+
+model PlayerAchievement {
+  id          String   @id @default(cuid())
+  playerId    String
+  achievementId String
+  unlockedAt  DateTime @default(now())
+
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, achievementId])
+  @@map("player_achievements")
+}
+
+model Guild {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  ownerId     String
+  level       Int      @default(1)
+  xp          Int      @default(0)
+  coins       BigInt   @default(0)
+  banner      String?
+  perks       String[] @default([])
+  createdAt   DateTime @default(now())
+
+  members     GuildMember[]
+
+  @@map("guilds")
+}
+
+model GuildMember {
+  id       String @id @default(cuid())
+  guildId  String
+  playerId String @unique
+  role     String @default("member") // owner, officer, member
+  joinedAt DateTime @default(now())
+
+  guild    Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("guild_members")
+}
+
+model MarketListing {
+  id        String   @id @default(cuid())
+  sellerId  String
+  itemId    String
+  quantity  Int
+  price     BigInt
+  listed    DateTime @default(now())
+  expires   DateTime
+  sold      Boolean  @default(false)
+
+  seller    Player   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@map("market_listings")
+}
+
+model Trade {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  senderItems  Json
+  receiverItems Json
+  senderCoins  BigInt @default(0)
+  receiverCoins BigInt @default(0)
+  status     String   @default("pending") // pending, accepted, declined, expired
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  sender     Player   @relation("TradesSent", fields: [senderId], references: [id])
+  receiver   Player   @relation("TradesReceived", fields: [receiverId], references: [id])
+
+  @@map("trades")
+}
+
+model BossEvent {
+  id          String   @id @default(cuid())
+  bossId      String
+  health      BigInt
+  maxHealth   BigInt
+  world       String
+  active      Boolean  @default(true)
+  spawnedAt   DateTime @default(now())
+  defeatedAt  DateTime?
+  participants Json    @default("[]")
+
+  @@map("boss_events")
+}
+
+model BattlePass {
+  id        String @id @default(cuid())
+  playerId  String @unique
+  season    Int    @default(1)
+  tier      Int    @default(0)
+  xp        Int    @default(0)
+  isPremium Boolean @default(false)
+  claimed   Int[]  @default([])
+
+  player    Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("battle_pass")
+}
+
+model SeasonalEvent {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // halloween, christmas, sakura, summer
+  active    Boolean  @default(true)
+  startDate DateTime
+  endDate   DateTime
+  data      Json
+
+  @@map("seasonal_events")
+}
