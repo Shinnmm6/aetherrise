@@ -15,15 +15,19 @@ module.exports = {
         .setRequired(true)),
 
   async execute(interaction) {
+    // 1. Defer the reply immediately so Discord knows we are working
+    await interaction.deferReply({ ephemeral: true });
+
     const channel = interaction.options.getChannel('channel');
     const text = interaction.options.getString('text');
 
     try {
       await channel.send(text);
-      await interaction.reply({ content: `✅ Message sent to ${channel}!`, ephemeral: true });
+      // 2. Use editReply instead of reply since we deferred
+      await interaction.editReply({ content: `✅ Message sent to ${channel}!` });
     } catch (error) {
       console.error(error);
-      await interaction.reply({ content: '❌ Failed to send message. Make sure I have permission to post there.', ephemeral: true });
+      await interaction.editReply({ content: '❌ Failed to send message. Make sure I have permission to post there.' });
     }
   },
 };
