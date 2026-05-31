@@ -8,6 +8,18 @@ function getRandomItem(table) {
   return table[Math.floor(Math.random() * table.length)];
 }
 
+// Logic for standard combat (used by /hunt)
+async function simulateCombat(player, enemy, stats) {
+  const dmg = Math.floor(stats.atk * (0.8 + Math.random() * 0.4));
+  const hpLost = Math.max(1, enemy.atk - stats.def);
+  return {
+    win: dmg >= enemy.hp,
+    damageDealt: dmg,
+    hpLost: hpLost
+  };
+}
+
+// Logic for Boss Battles (used by /boss)
 async function startBossBattle(interaction, player, bossData) {
   if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
   
@@ -92,7 +104,6 @@ async function startBossBattle(interaction, player, bossData) {
       let lootMsg = '';
       
       if (wonItemId) {
-        // Correctly using upsert to handle new or existing inventory items
         await prisma.inventoryItem.upsert({
           where: { playerId_itemId: { playerId: player.id, itemId: wonItemId } },
           update: { quantity: { increment: 1 } },
@@ -111,4 +122,5 @@ async function startBossBattle(interaction, player, bossData) {
     }
   });
 }
-module.exports = { startBossBattle };
+
+module.exports = { startBossBattle, simulateCombat };
