@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getOrCreatePlayer } = require('../../database/client');
 const { DUNGEONS, startDungeon } = require('../../systems/dungeonSystem');
 
@@ -22,10 +22,14 @@ module.exports = {
   cooldown: COOLDOWN,
 
   async execute(interaction) {
+    // 1. Defer immediately so we have the interaction state
+    await interaction.deferReply();
+    
     const player = await getOrCreatePlayer(interaction.user.id, interaction.user.username);
     const choice = interaction.options.getString('dungeon');
 
     if (choice) {
+      // Pass the already deferred interaction to the dungeon system
       return startDungeon(interaction, player, choice);
     }
 
@@ -46,6 +50,8 @@ module.exports = {
     }
 
     embed.setFooter({ text: 'Use /dungeon <name> to enter a specific dungeon' });
+    
+    // 2. Use editReply since we deferred at the start
     await interaction.editReply({ embeds: [embed] });
   },
 };
