@@ -2,7 +2,6 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const { WORLDS, ITEMS } = require('../config/gameData');
 const { prisma } = require('../database/client');
 const { getPlayerStats, awardXP, awardCoins } = require('../managers/playerManager');
-const { addItemToInventory } = require('../managers/inventoryManager'); // Change this path to match your actual file!
 const { randomInt, formatNumber, progressBar } = require('../utils/helpers');
 
 function getRandomItem(table) {
@@ -93,8 +92,8 @@ async function startBossBattle(interaction, player, bossData) {
       let lootMsg = '';
       
       if (wonItemId) {
-        // CALLING YOUR EXISTING MANAGER FUNCTION INSTEAD OF RAW PRISMA
-        await addItemToInventory(player.id, wonItemId, 1); 
+        // Direct DB write - No external manager dependency
+        await prisma.inventory.create({ data: { playerId: player.id, itemId: wonItemId, quantity: 1 } }).catch(console.error);
         lootMsg = `\n🎁 Found: ${ITEMS[wonItemId].emoji} ${ITEMS[wonItemId].name}`;
       }
 
