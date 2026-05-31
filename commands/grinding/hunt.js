@@ -5,6 +5,7 @@ const { rollWorldDrop } = require('../../managers/lootManager');
 const { simulateCombat } = require('../../systems/battleSystem');
 const { WORLDS, RARITIES } = require('../../config/gameData');
 const { randomFrom, randomInt, formatNumber, progressBar } = require('../../utils/helpers');
+const { updateQuestProgress } = require('../../managers/questManager');
 
 const COOLDOWN = 30;
 
@@ -15,6 +16,7 @@ module.exports = {
   cooldown: COOLDOWN,
 
   async execute(interaction) {
+    await interaction.deferReply();
     const player = await getOrCreatePlayer(interaction.user.id, interaction.user.username);
     await regenEnergy(player);
 
@@ -37,7 +39,7 @@ module.exports = {
     const result = await simulateCombat(player, enemy, stats);
 
     if (!result.won) {
-      // Lost fight — minor xp consolation
+      // Lost fight
       const consolationXp = Math.floor(enemy.xp * 0.2);
       await awardXP(player.id, consolationXp);
 
@@ -51,8 +53,12 @@ module.exports = {
       });
     }
 
-    // Won!
+    // --- WON FIGHT ---
     await prisma.player.update({ where: { id: player.id }, data: { monstersKilled: { increment: 1 } } });
+    
+    // QUEST PROGRESS TRIGGER
+    await updateQuestProgress(player.id, 'hunt', 1);
+
     const coinGain = Math.floor(randomInt(enemy.coins[0], enemy.coins[1]) * stats.coinBonus);
     const xpGain = Math.floor(enemy.xp * stats.xpBonus);
 
@@ -63,7 +69,6 @@ module.exports = {
     const drops = await rollWorldDrop(player.id, player.world, stats.luckBonus);
     const achievements = await checkAchievements({ ...player, monstersKilled: player.monstersKilled + 1 });
 
-    // Build reward display
     const rewardLines = [
       `💰 **${formatNumber(coinGain)}** coins`,
       `✨ **+${formatNumber(xpGain)}** XP`,
@@ -71,35 +76,23 @@ module.exports = {
 
     for (const drop of drops) {
       const r = RARITIES[drop.rarity];
-      if (drop.isPet) {
-        rewardLines.push(`🐾 **PET DROP!** ${r?.emoji || ''} **${drop.name}** — ${r?.name || 'Unknown'} PET!`);
-      } else {
-        rewardLines.push(`${r?.emoji || '📦'} **${drop.name}** — ${r?.name || 'Unknown'}`);
-      }
+      rewardLines.push(drop.isPet ? `🐾 **PET DROP!** ${r?.emoji || ''} **${drop.name}**` : `${r?.emoji || '📦'} **${drop.name}**`);
     }
 
     if (levelUps.length) rewardLines.push(`🎉 **LEVEL UP! → ${newLevel}**`);
 
     const hasMythicPlus = drops.some(d => ['mythic', 'void', 'celestial'].includes(d.rarity));
-    const color = hasMythicPlus ? RARITIES.mythic.color :
-                  drops.some(d => d.rarity === 'legendary') ? RARITIES.legendary.color :
-                  drops.some(d => d.rarity === 'epic') ? RARITIES.epic.color : 0x5865F2;
+    const color = hasMythicPlus ? RARITIES.mythic.color : 0x5865F2;
 
     const embed = new EmbedBuilder()
       .setColor(color)
       .setTitle(`⚔️ ${enemy.emoji} ${enemy.name} Defeated!`)
       .setDescription((result.log || ['Combat occurred']).join('\n'))
-      .addFields(
-        { name: `═══ Rewards ═══`, value: rewardLines.join('\n'), inline: false }
-      )
+      .addFields({ name: `═══ Rewards ═══`, value: rewardLines.join('\n'), inline: false })
       .setFooter({ text: `World: ${world.name} • Energy: ${player.energy - 5}/${player.maxEnergy}` });
 
-    if (hasMythicPlus) {
-      embed.setDescription(`✨✨✨ **INCREDIBLE DROP!** ✨✨✨\n${(result.log || ['Combat occurred']).join('\n')}`);
-    }
-
     for (const ach of achievements) {
-      embed.addFields({ name: `🏆 Achievement Unlocked!`, value: `${ach.emoji} **${ach.name}** — ${ach.desc}` });
+      embed.addFields({ name: `🏆 Achievement Unlocked!`, value: `${ach.emoji} **${ach.name}**` });
     }
 
     await interaction.editReply({ embeds: [embed] });
