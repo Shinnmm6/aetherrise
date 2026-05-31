@@ -15,7 +15,7 @@ module.exports = {
       .addIntegerOption(o => o.setName('amount').setDescription('Amount to give').setRequired(true)))
     .addSubcommand(sub => sub.setName('give_item').setDescription('Give item')
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
-      .addStringOption(o => o.setName('item').setDescription('Item ID or name').setRequired(true))
+      .addStringOption(o => o.setName('item').setDescription('Item ID or name').setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName('quantity').setDescription('Quantity')))
     .addSubcommand(sub => sub.setName('give_xp').setDescription('Give XP')
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
@@ -24,6 +24,13 @@ module.exports = {
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true)))
     .addSubcommand(sub => sub.setName('cooldown_reset').setDescription('Reset all command cooldowns for a player')
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))),
+
+  async autocomplete(interaction) {
+    const focusedValue = interaction.options.getFocused();
+    const choices = Object.entries(ITEMS).map(([id, data]) => ({ name: data.name, value: id }));
+    const filtered = choices.filter(choice => choice.name.toLowerCase().includes(focusedValue.toLowerCase())).slice(0, 25);
+    await interaction.respond(filtered);
+  },
 
   async execute(interaction) {
     if (!interaction.deferred && !interaction.replied) {
@@ -45,19 +52,11 @@ module.exports = {
 
       if (sub === 'give_item') {
         const target = interaction.options.getUser('user');
-        const input = interaction.options.getString('item');
+        const itemId = interaction.options.getString('item');
         const qty = interaction.options.getInteger('quantity') || 1;
         const player = await getOrCreatePlayer(target.id, target.username);
         
-        // Find valid ID by matching input against keys OR names
-        const itemId = Object.keys(ITEMS).find(id => 
-          id.toLowerCase() === input.toLowerCase() || 
-          ITEMS[id].name.toLowerCase() === input.toLowerCase()
-        );
-
-        if (!itemId) {
-          return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Item **${input}** not found in gameData.`)] });
-        }
+        if (!ITEMS[itemId]) return interaction.editReply({ content: '❌ Invalid item ID.' });
 
         await addItem(player.id, itemId, qty);
         try { await redis.del(`inventory:${target.id}`); } catch (e) {}
