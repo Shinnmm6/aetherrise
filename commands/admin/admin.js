@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { getOrCreatePlayer } = require('../../database/client');
+const { getOrCreatePlayer, db } = require('../../database/client'); // Import 'db' here
 const { addItem, awardCoins, awardXP } = require('../../managers/playerManager');
 const { formatNumber } = require('../../utils/helpers');
 const { getRedis } = require('../../database/redis');
@@ -63,7 +63,8 @@ module.exports = {
       if (sub === 'level_reset') {
         const target = interaction.options.getUser('user');
         const player = await getOrCreatePlayer(target.id, target.username);
-        await global.db.query('UPDATE players SET level = 1, xp = 0 WHERE id = ?', [player.id]);
+        // Using the imported 'db'
+        await db.query('UPDATE players SET level = 1, xp = 0 WHERE id = ?', [player.id]);
         try { await redis.del(`player:${target.id}`); } catch (e) {}
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`✅ **${target.username}** has been reset to level 1.`)] });
       }
