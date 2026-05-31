@@ -14,11 +14,12 @@ async function simulateCombat(player, enemy, stats) {
   const hpLost = Math.max(1, enemy.atk - stats.def);
   const won = dmg >= enemyHp;
   
+  const logMsg = won ? '🎉 You defeated the ' + enemy.name + '!' : '💀 You took ' + hpLost + ' damage';
   return {
     won: won,
     damageDealt: dmg,
     hpLost: hpLost,
-    log: [`⚔️ You dealt ${dmg} damage`, won ? \`🎉 You defeated the ${enemy.name}!\` : \`💀 You took ${hpLost} damage\`]
+    log: ['⚔️ You dealt ' + dmg + ' damage', logMsg]
   };
 }
 
@@ -37,13 +38,13 @@ async function startBossBattle(interaction, player, bossData) {
 
   const buildEmbed = () => new EmbedBuilder()
       .setColor(0xFF0044)
-      .setTitle(\`⚔️ BOSS BATTLE: ${bossData.emoji} ${bossData.name}\`)
+      .setTitle('⚔️ BOSS BATTLE: ' + bossData.emoji + ' ' + bossData.name)
       .setDescription(battleLog.slice(-5).join('\n') || '*Battle begins!*')
       .addFields(
-        { name: \`${bossData.emoji} ${bossData.name}\`, value: \`❤️ \`${progressBar(bossHp, bossMaxHp, 15)}\` ${formatNumber(bossHp)} HP\` },
-        { name: '🧙 You', value: \`❤️ \`${progressBar(playerHp, playerMaxHp, 15)}\` ${playerHp} HP\n💙 MP: ${playerMp}/50\` }
+        { name: bossData.emoji + ' ' + bossData.name, value: '❤️ `' + progressBar(bossHp, bossMaxHp, 15) + '` ' + formatNumber(bossHp) + ' HP' },
+        { name: '🧙 You', value: '❤️ `' + progressBar(playerHp, playerMaxHp, 15) + '` ' + playerHp + ' HP\n💙 MP: ' + playerMp + '/50' }
       )
-      .setFooter({ text: \`Turn ${turn} • Your move!\` });
+      .setFooter({ text: 'Turn ' + turn + ' • Your move!' });
 
   const buildRow = (disabled = false) => new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('battle_attack').setLabel('⚔️ Attack').setStyle(ButtonStyle.Danger).setDisabled(disabled),
@@ -67,7 +68,7 @@ async function startBossBattle(interaction, player, bossData) {
       const percentDmg = Math.floor(bossMaxHp * 0.02);
       const dmg = Math.max(rawDmg, percentDmg);
       bossHp -= dmg;
-      battleLog.push(\`⚔️ You attacked for **${dmg}**\`);
+      battleLog.push('⚔️ You attacked for **' + dmg + '**');
     } else if (action === 'battle_defend') {
       defending = true;
       battleLog.push('🛡️ You braced for the attack!');
@@ -75,7 +76,7 @@ async function startBossBattle(interaction, player, bossData) {
       playerMp -= 20;
       const dmg = Math.floor((stats.atk * 2.5) * (0.9 + Math.random() * 0.2));
       bossHp -= dmg;
-      battleLog.push(\`✨ Skill hit for **${dmg}**!\`);
+      battleLog.push('✨ Skill hit for **' + dmg + '**!');
     } else if (action === 'battle_flee') {
       ended = true; collector.stop('fled'); return;
     }
@@ -86,7 +87,7 @@ async function startBossBattle(interaction, player, bossData) {
     const bossAtk = randomInt(Math.floor(bossData.atk * 0.8), bossData.atk);
     let dmgTaken = Math.max(1, bossAtk - (defending ? stats.def * 2 : stats.def));
     playerHp -= dmgTaken;
-    battleLog.push(\`${bossData.emoji} ${bossData.name} dealt **${dmgTaken}**!\`);
+    battleLog.push(bossData.emoji + ' ' + bossData.name + ' dealt **' + dmgTaken + '**!');
 
     if (playerHp <= 0) { ended = true; collector.stop('lose'); return; }
     await interaction.editReply({ embeds: [buildEmbed()], components: [buildRow()] });
@@ -112,11 +113,11 @@ async function startBossBattle(interaction, player, bossData) {
           create: { playerId: player.id, itemId: wonItemId, quantity: 1 }
         }).catch(console.error);
         
-        lootMsg = \`\n🎁 Found: ${ITEMS[wonItemId].emoji} ${ITEMS[wonItemId].name}\`;
+        lootMsg = '\n🎁 Found: ' + ITEMS[wonItemId].emoji + ' ' + ITEMS[wonItemId].name;
       }
 
       await interaction.editReply({ 
-        embeds: [new EmbedBuilder().setTitle('🏆 Boss Defeated!').setDescription(\`Rewards: +${xpGain} XP, +${coinGain} coins${lootMsg}\`)], 
+        embeds: [new EmbedBuilder().setTitle('🏆 Boss Defeated!').setDescription('Rewards: +' + xpGain + ' XP, +' + coinGain + ' coins' + lootMsg)], 
         components: [buildRow(true)] 
       }).catch(() => {});
     } else {
