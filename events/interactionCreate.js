@@ -12,7 +12,7 @@ module.exports = {
       try {
         await command.autocomplete(interaction);
       } catch (error) {
-        console.error(chalk.red(\`Error in autocomplete /\${interaction.commandName}:\`), error);
+        console.error(chalk.red(`Error in autocomplete /${interaction.commandName}:`), error);
       }
       return;
     }
@@ -40,14 +40,14 @@ module.exports = {
       if (command.cooldown) {
         const { onCooldown, remaining } = await checkCooldown(interaction.user.id, command.data.name);
         if (onCooldown) {
-          return await interaction.editReply({ embeds: [cooldownEmbed(\`/\${command.data.name}\`, remaining)] });
+          return await interaction.editReply({ embeds: [cooldownEmbed(`/${command.data.name}`, remaining)] });
         }
         await setCooldown(interaction.user.id, command.data.name, command.cooldown);
       }
 
       await command.execute(interaction);
     } catch (error) {
-      console.error(chalk.red(\`Error in /\${interaction.commandName}:\`), error);
+      console.error(chalk.red(`Error in /${interaction.commandName}:`), error);
 
       const errEmbed = errorEmbed('Something went wrong. Please try again!');
       await interaction.editReply({ embeds: [errEmbed] }).catch(() => {
