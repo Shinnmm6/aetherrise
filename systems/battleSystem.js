@@ -15,8 +15,10 @@ async function simulateCombat(player, enemy, stats) {
   return {
     win: dmg >= enemy.hp,
     damageDealt: dmg,
-    hpLost: hpLost
+    hpLost: hpLost,
+    log: [`⚔️ You dealt ${dmg} damage`, `💀 You took ${hpLost} damage`]
   };
+}
 }
 
 // Logic for Boss Battles (used by /boss)

@@ -45,7 +45,7 @@ module.exports = {
         embeds: [new EmbedBuilder()
           .setColor(0x666666)
           .setTitle(`💀 Defeated by ${enemy.emoji} ${enemy.name}`)
-          .setDescription(result.log.join('\n'))
+          .setDescription((result.log || ['Combat occurred']).join('\n'))
           .addFields({ name: 'Consolation', value: `✨ +${consolationXp} XP for trying` })
           .setFooter({ text: 'Equip better gear and try again!' })],
       });
@@ -88,14 +88,14 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setColor(color)
       .setTitle(`⚔️ ${enemy.emoji} ${enemy.name} Defeated!`)
-      .setDescription(result.log.join('\n'))
+      .setDescription((result.log || ['Combat occurred']).join('\n'))
       .addFields(
         { name: `═══ Rewards ═══`, value: rewardLines.join('\n'), inline: false }
       )
       .setFooter({ text: `World: ${world.name} • Energy: ${player.energy - 5}/${player.maxEnergy}` });
 
     if (hasMythicPlus) {
-      embed.setDescription(`✨✨✨ **INCREDIBLE DROP!** ✨✨✨\n${result.log.join('\n')}`);
+      embed.setDescription(`✨✨✨ **INCREDIBLE DROP!** ✨✨✨\n${(result.log || ['Combat occurred']).join('\n')}`);
     }
 
     for (const ach of achievements) {
