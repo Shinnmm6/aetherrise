@@ -21,7 +21,6 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    await interaction.deferReply();
     const type = interaction.options.getString('type') || 'level';
 
     const orderMap = {
