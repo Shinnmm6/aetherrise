@@ -12,7 +12,7 @@ async function simulateCombat(player, enemy, stats) {
   const dmg = Math.floor(stats.atk * (0.8 + Math.random() * 0.4));
   const hpLost = Math.max(1, enemy.atk - stats.def);
   return {
-    win: dmg >= enemy.hp,
+    won: dmg >= enemy.hp,
     damageDealt: dmg,
     hpLost: hpLost,
     log: [`⚔️ You dealt ${dmg} damage`, `💀 You took ${hpLost} damage`]
