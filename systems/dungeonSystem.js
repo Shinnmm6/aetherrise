@@ -50,12 +50,24 @@ const DUNGEONS = {
 
 async function startDungeon(interaction, player, dungeonId) {
   const dungeon = DUNGEONS[dungeonId];
-  if (!dungeon) return interaction.editReply({ content: '❌ Unknown dungeon.' }).catch(() => {});
+  
+  // Helper to safely reply or edit
+  const safeReply = async (payload) => {
+    if (interaction.deferred || interaction.replied) {
+      return await interaction.editReply(payload);
+    }
+    return await interaction.reply({ ...payload, fetchReply: true });
+  };
+
+  if (!dungeon) return await safeReply({ content: '❌ Unknown dungeon.', ephemeral: true });
   if (player.level < dungeon.minLevel) {
-    return interaction.editReply({ content: `❌ You need Level **${dungeon.minLevel}** to enter ${dungeon.name}!` }).catch(() => {});
+    return await safeReply({ content: `❌ You need Level **${dungeon.minLevel}** to enter ${dungeon.name}!`, ephemeral: true });
   }
 
-  if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
+  // Defer if not already handled
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply();
+  }
 
   const stats = await getPlayerStats(player.id);
   let playerHp = 100 + player.level * 10;
@@ -63,33 +75,28 @@ async function startDungeon(interaction, player, dungeonId) {
   let floor = 1;
   let totalCoins = 0;
   let totalXp = 0;
-  let allDrops = [];
   const log = [];
   let ended = false;
 
   const world = WORLDS[dungeon.world];
 
-  const buildFloorEmbed = () => {
-    return new EmbedBuilder()
-      .setColor(world.bgColor)
-      .setTitle(`${dungeon.name} — Floor ${floor}/${dungeon.floors}`)
-      .setDescription(log.slice(-4).join('\n') || `*Entering ${dungeon.name}...*`)
-      .addFields(
-        { name: '❤️ Your HP', value: `\`${progressBar(playerHp, playerMaxHp, 15)}\` ${playerHp}/${playerMaxHp}`, inline: false },
-        { name: '💰 Coins', value: formatNumber(totalCoins), inline: true },
-        { name: '✨ XP', value: formatNumber(totalXp), inline: true },
-      );
-  };
+  const buildFloorEmbed = () => new EmbedBuilder()
+    .setColor(world.bgColor)
+    .setTitle(`${dungeon.name} — Floor ${floor}/${dungeon.floors}`)
+    .setDescription(log.slice(-4).join('\n') || `*Entering ${dungeon.name}...*`)
+    .addFields(
+      { name: '❤️ HP', value: `\`${progressBar(playerHp, playerMaxHp, 15)}\` ${playerHp}/${playerMaxHp}`, inline: false },
+      { name: '💰 Coins', value: formatNumber(totalCoins), inline: true },
+      { name: '✨ XP', value: formatNumber(totalXp), inline: true },
+    );
 
   const buildRow = (disabled = false) => new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('dg_fight').setLabel('⚔️ Fight').setStyle(ButtonStyle.Danger).setDisabled(disabled),
-    new ButtonBuilder().setCustomId('dg_rest').setLabel('💤 Rest').setStyle(ButtonStyle.Primary).setDisabled(disabled || playerHp >= playerMaxHp),
-    new ButtonBuilder().setCustomId('dg_loot').setLabel('🎁 Loot').setStyle(ButtonStyle.Success).setDisabled(disabled),
-    new ButtonBuilder().setCustomId('dg_flee').setLabel('🚪 Exit').setStyle(ButtonStyle.Secondary).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('dg_fight').setLabel('⚔️').setStyle(ButtonStyle.Danger).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('dg_rest').setLabel('💤').setStyle(ButtonStyle.Primary).setDisabled(disabled || playerHp >= playerMaxHp),
+    new ButtonBuilder().setCustomId('dg_flee').setLabel('🚪').setStyle(ButtonStyle.Secondary).setDisabled(disabled),
   );
 
   const msg = await interaction.editReply({ embeds: [buildFloorEmbed()], components: [buildRow()] });
-  
   const collector = msg.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 180_000 });
 
   collector.on('collect', async (btnI) => {
@@ -97,10 +104,9 @@ async function startDungeon(interaction, player, dungeonId) {
     if (btnI.customId === 'dg_flee') { ended = true; collector.stop('flee'); return; }
     if (btnI.customId === 'dg_rest') { playerHp = Math.min(playerMaxHp, playerHp + 20); log.push('💤 You rested.'); }
     else if (btnI.customId === 'dg_fight') {
-      const floorMult = Math.pow(dungeon.floorMultiplier, floor - 1);
-      const dmg = Math.max(1, Math.floor((randomInt(20, 40) * floorMult) - stats.def));
+      const dmg = Math.max(1, randomInt(10, 30));
       playerHp -= dmg;
-      totalCoins += Math.floor(randomInt(100, 300) * floorMult * stats.coinBonus);
+      totalCoins += 100;
       log.push(`⚔️ Floor ${floor}: -${dmg} HP`);
       if (playerHp <= 0) { ended = true; collector.stop('defeated'); return; }
       if (floor >= dungeon.floors) { ended = true; collector.stop('complete'); return; }
@@ -110,13 +116,8 @@ async function startDungeon(interaction, player, dungeonId) {
   });
 
   collector.on('end', async (_, reason) => {
-    if (reason === 'complete') {
-        await awardCoins(player.id, totalCoins);
-        await awardXP(player.id, totalXp);
-        await interaction.editReply({ embeds: [new EmbedBuilder().setTitle('🏆 Cleared!').setDescription('Dungeon complete!')], components: [buildRow(true)] });
-    } else {
-        await interaction.editReply({ components: [buildRow(true)] });
-    }
+    const finalEmbed = new EmbedBuilder().setTitle(reason === 'complete' ? '🏆 Dungeon Cleared!' : '💀 Defeated!');
+    await interaction.editReply({ embeds: [finalEmbed], components: [buildRow(true)] });
   });
 }
 
