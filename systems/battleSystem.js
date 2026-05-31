@@ -9,17 +9,19 @@ function getRandomItem(table) {
 }
 
 async function simulateCombat(player, enemy, stats) {
-  const enemyHp = enemy.hp || 50;
+  // Use enemy.hp, or if that is missing, look for enemy.stats.hp, or default to 50
+  const enemyHp = enemy.hp || (enemy.stats ? enemy.stats.hp : 50);
   const dmg = Math.floor(stats.atk * (0.8 + Math.random() * 0.4));
   const hpLost = Math.max(1, enemy.atk - stats.def);
   const won = dmg >= enemyHp;
   
+  // Debugging: added (Target: enemyHp) to the log to see why you are losing
   const logMsg = won ? '🎉 You defeated the ' + enemy.name + '!' : '💀 You took ' + hpLost + ' damage';
   return {
     won: won,
     damageDealt: dmg,
     hpLost: hpLost,
-    log: ['⚔️ You dealt ' + dmg + ' damage', logMsg]
+    log: ['⚔️ You dealt ' + dmg + ' damage (Target: ' + enemyHp + ')', logMsg]
   };
 }
 
