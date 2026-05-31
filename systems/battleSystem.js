@@ -57,9 +57,9 @@ async function startBossBattle(interaction, player, bossData) {
     let defending = false;
     const action = btnInteraction.customId;
 
+    // RAW DAMAGE LOGIC: Ignoring boss defense
     if (action === 'battle_attack') {
-      const atk = randomInt(Math.floor(stats.atk * 0.8), stats.atk);
-      const dmg = Math.max(1, atk - bossData.def);
+      const dmg = Math.floor(stats.atk * (0.9 + Math.random() * 0.2));
       bossHp -= dmg;
       battleLog.push(`⚔️ You attacked for **${dmg}**`);
     } else if (action === 'battle_defend') {
@@ -67,7 +67,7 @@ async function startBossBattle(interaction, player, bossData) {
       battleLog.push('🛡️ You braced for the attack!');
     } else if (action === 'battle_skill') {
       playerMp -= 20;
-      const dmg = Math.max(1, Math.floor(stats.atk * 2.5) - bossData.def);
+      const dmg = Math.floor((stats.atk * 2.5) * (0.9 + Math.random() * 0.2));
       bossHp -= dmg;
       battleLog.push(`✨ You used a skill for **${dmg}**!`);
     } else if (action === 'battle_flee') {
