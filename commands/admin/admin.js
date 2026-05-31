@@ -23,8 +23,7 @@ module.exports = {
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))),
 
   async execute(interaction) {
-    // Check if already replied/deferred to prevent InteractionAlreadyReplied error
-    if (!interaction.replied && !interaction.deferred) {
+    if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ ephemeral: true });
     }
 
@@ -64,7 +63,6 @@ module.exports = {
       if (sub === 'level_reset') {
         const target = interaction.options.getUser('user');
         const player = await getOrCreatePlayer(target.id, target.username);
-        // Using global.db assuming it is set up in your index/database client
         await global.db.query('UPDATE players SET level = 1, xp = 0 WHERE id = ?', [player.id]);
         try { await redis.del(`player:${target.id}`); } catch (e) {}
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`✅ **${target.username}** has been reset to level 1.`)] });
