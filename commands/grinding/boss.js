@@ -4,33 +4,31 @@ const { getOrCreatePlayer } = require('../../database/client');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('boss')
-    .setDescription('Challenge the World Boss for epic rewards!'),
+    .setDescription('Challenge the World Boss!'),
 
   async execute(interaction) {
     const player = await getOrCreatePlayer(interaction.user.id, interaction.user.username);
     
-    // Boss Stats
-    const boss = {
-      name: 'Abyssal Overlord',
-      defense: 166,
-      hp: 10000
-    };
+    // Boss Info
+    const boss = { name: 'Abyssal Overlord' };
 
     // Combat Stats
     const atk = player.attack || 57;
     const critRate = 0.15; // 15% chance
     const critMultiplier = 1.5; 
 
-    // Scaling Damage Formula
-    const rawBase = atk * (100 / (100 + boss.defense));
-
+    // Calculate Damage: Base Attack with 90-110% variance
+    const variance = 0.9 + Math.random() * 0.2; 
+    let damage = Math.floor(atk * variance);
+    
     // Roll for Critical Hit
     const isCrit = Math.random() < critRate;
-    const finalMultiplier = isCrit ? critMultiplier : 1.0;
+    if (isCrit) {
+      damage = Math.floor(damage * critMultiplier);
+    }
 
-    // Add 10% Variance & Ensure at least 1 damage
-    const variance = 0.9 + Math.random() * 0.2;
-    const finalDamage = Math.max(1, Math.floor(rawBase * finalMultiplier * variance));
+    // Ensure damage is at least 1
+    const finalDamage = Math.max(1, damage);
 
     const embed = new EmbedBuilder()
       .setTitle(isCrit ? `💥 CRITICAL HIT on ${boss.name}!` : `⚔️ Attacked ${boss.name}`)
@@ -38,7 +36,7 @@ module.exports = {
       .setColor(isCrit ? 0xF1C40F : 0xED4245)
       .addFields(
         { name: 'Your Attack', value: `${atk}`, inline: true },
-        { name: 'Boss Defense', value: `${boss.defense}`, inline: true }
+        { name: 'Damage Dealt', value: `${finalDamage}`, inline: true }
       )
       .setFooter({ text: 'Keep grinding to get stronger!' });
 
