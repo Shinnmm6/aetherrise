@@ -19,7 +19,12 @@ module.exports = {
       });
     }
 
-    const boss = world.boss;
+    // Dynamic HP Scaling: 500 base + (Level * 200)
+    // This makes the boss get harder as the player gets stronger.
+    const boss = {
+      ...world.boss,
+      hp: 500 + (player.level * 200)
+    };
 
     try {
       await startBossBattle(interaction, player, boss);
