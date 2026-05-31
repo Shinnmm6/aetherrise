@@ -3,6 +3,7 @@ const { getOrCreatePlayer, prisma } = require('../../database/client');
 const { addItem, awardCoins, awardXP } = require('../../managers/playerManager');
 const { formatNumber } = require('../../utils/helpers');
 const { getRedis } = require('../../database/redis');
+const { ITEMS } = require('../../config/gameData');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -44,12 +45,23 @@ module.exports = {
 
       if (sub === 'give_item') {
         const target = interaction.options.getUser('user');
-        const item = interaction.options.getString('item');
+        const input = interaction.options.getString('item');
         const qty = interaction.options.getInteger('quantity') || 1;
         const player = await getOrCreatePlayer(target.id, target.username);
-        await addItem(player.id, item, qty);
+        
+        // Find valid ID by matching input against keys OR names
+        const itemId = Object.keys(ITEMS).find(id => 
+          id.toLowerCase() === input.toLowerCase() || 
+          ITEMS[id].name.toLowerCase() === input.toLowerCase()
+        );
+
+        if (!itemId) {
+          return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Item **${input}** not found in gameData.`)] });
+        }
+
+        await addItem(player.id, itemId, qty);
         try { await redis.del(`inventory:${target.id}`); } catch (e) {}
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${item}** to **${target.username}**.`)] });
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${ITEMS[itemId].name}** to **${target.username}**.`)] });
       }
 
       if (sub === 'give_xp') {
