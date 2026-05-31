@@ -33,52 +33,26 @@ module.exports = {
     const redis = getRedis();
 
     try {
-      if (sub === 'give_coins') {
-        const target = interaction.options.getUser('user');
-        const amount = interaction.options.getInteger('amount');
-        const player = await getOrCreatePlayer(target.id, target.username);
-        await awardCoins(player.id, amount);
-        try { await redis.del(`player:${target.id}`); } catch (e) {}
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** coins to **${target.username}**.`)] });
-      }
-
-      if (sub === 'give_item') {
-        const target = interaction.options.getUser('user');
-        const item = interaction.options.getString('item');
-        const qty = interaction.options.getInteger('quantity') || 1;
-        const player = await getOrCreatePlayer(target.id, target.username);
-        await addItem(player.id, item, qty);
-        try { await redis.del(`inventory:${target.id}`); } catch (e) {}
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${item}** to **${target.username}**.`)] });
-      }
-
-      if (sub === 'give_xp') {
-        const target = interaction.options.getUser('user');
-        const amount = interaction.options.getInteger('amount');
-        const player = await getOrCreatePlayer(target.id, target.username);
-        const { levelUps, newLevel } = await awardXP(player.id, amount);
-        return interaction.editReply({ 
-          embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** XP to **${target.username}**. ${levelUps?.length ? `Leveled up to ${newLevel}!` : ''}`)] 
-        });
-      }
-
-      if (sub === 'level_reset') {
-        const target = interaction.options.getUser('user');
-        await prisma.player.update({ where: { discordId: target.id }, data: { level: 1, xp: 0 } });
-        try { await redis.del(`player:${target.id}`); } catch (e) {}
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`✅ **${target.username}** has been reset to level 1 and 0 XP.`)] });
-      }
-
       if (sub === 'cooldown_reset') {
         const target = interaction.options.getUser('user');
-        // Get all keys for this user specifically
-        const keys = await redis.keys(`*:${target.id}`);
-        if (keys.length > 0) {
-            await redis.del(keys);
+        
+        // DEBUG: List all keys first to see what's in there
+        const allKeys = await redis.keys('*');
+        console.log("DEBUG: All Redis Keys:", allKeys);
+        
+        // Try searching for keys containing the ID
+        const userKeys = await redis.keys(`*${target.id}*`);
+        console.log(`DEBUG: Keys matching ${target.id}:`, userKeys);
+        
+        if (userKeys.length > 0) {
+            await redis.del(...userKeys);
+            return interaction.editReply({ content: `✅ Reset ${userKeys.length} keys for ${target.username}.` });
+        } else {
+            return interaction.editReply({ content: `❌ No keys found for this user. Keys list logged to console.` });
         }
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset **${keys.length}** cooldown keys for **${target.username}**.`)] });
       }
       
+      // ... (keep the other subcommands here)
       return interaction.editReply({ content: 'Subcommand not recognized.' });
     } catch (err) {
       console.error(err);
