@@ -20,6 +20,8 @@ module.exports = {
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
       .addIntegerOption(o => o.setName('amount').setDescription('Amount of XP').setRequired(true)))
     .addSubcommand(sub => sub.setName('level_reset').setDescription('Reset a player to level 1')
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true)))
+    .addSubcommand(sub => sub.setName('cooldown_reset').setDescription('Reset all command cooldowns for a player')
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))),
 
   async execute(interaction) {
@@ -62,18 +64,29 @@ module.exports = {
 
       if (sub === 'level_reset') {
         const target = interaction.options.getUser('user');
-        await prisma.player.update({
-          where: { discordId: target.id },
-          data: { level: 1, xp: 0 }
-        });
+        await prisma.player.update({ where: { discordId: target.id }, data: { level: 1, xp: 0 } });
         try { await redis.del(`player:${target.id}`); } catch (e) {}
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`✅ **${target.username}** has been reset to level 1 and 0 XP.`)] });
+      }
+
+      if (sub === 'cooldown_reset') {
+        const target = interaction.options.getUser('user');
+        // Scan for keys containing the user ID. 
+        // This assumes your cooldown keys follow a pattern like "cooldown:command:userid"
+        let cursor = '0';
+        do {
+          const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', `*:${target.id}`, 'COUNT', '100');
+          cursor = nextCursor;
+          if (keys.length > 0) await redis.del(...keys);
+        } while (cursor !== '0');
+        
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset all cooldowns for **${target.username}**.`)] });
       }
       
       return interaction.editReply({ content: 'Subcommand not recognized.' });
     } catch (err) {
       console.error(err);
-      return interaction.editReply({ content: '❌ Failed: Make sure the user has an account in the database.' });
+      return interaction.editReply({ content: '❌ An error occurred.' });
     }
   },
 };
