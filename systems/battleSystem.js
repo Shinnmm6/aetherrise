@@ -1,8 +1,13 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { WORLDS } = require('../config/gameData');
+const { WORLDS, ITEMS } = require('../config/gameData');
 const { prisma } = require('../database/client');
 const { getPlayerStats, awardXP, awardCoins } = require('../managers/playerManager');
+const { addItemToInventory } = require('../managers/inventoryManager'); // Change this path to match your actual file!
 const { randomInt, formatNumber, progressBar } = require('../utils/helpers');
+
+function getRandomItem(table) {
+  return table[Math.floor(Math.random() * table.length)];
+}
 
 async function startBossBattle(interaction, player, bossData) {
   if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
@@ -46,7 +51,7 @@ async function startBossBattle(interaction, player, bossData) {
 
     if (action === 'battle_attack') {
       const rawDmg = Math.floor(stats.atk * (0.9 + Math.random() * 0.2));
-      const percentDmg = Math.floor(bossMaxHp * 0.02); // 2% Boss HP
+      const percentDmg = Math.floor(bossMaxHp * 0.02);
       const dmg = Math.max(rawDmg, percentDmg);
       bossHp -= dmg;
       battleLog.push(`⚔️ You attacked for **${dmg}**`);
@@ -76,10 +81,27 @@ async function startBossBattle(interaction, player, bossData) {
 
   collector.on('end', async (_, reason) => {
     if (reason === 'win') {
-      await awardXP(player.id, Math.floor(bossData.xp * stats.xpBonus));
-      await awardCoins(player.id, Math.floor(randomInt(bossData.coins[0], bossData.coins[1]) * stats.coinBonus));
+      const xpGain = Math.floor(bossData.xp * stats.xpBonus);
+      const coinGain = Math.floor(randomInt(bossData.coins[0], bossData.coins[1]) * stats.coinBonus);
+      
+      await awardXP(player.id, xpGain);
+      await awardCoins(player.id, coinGain);
       await prisma.player.update({ where: { id: player.id }, data: { bossesKilled: { increment: 1 } } });
-      await interaction.editReply({ embeds: [new EmbedBuilder().setTitle('🏆 Victory!').setDescription('Rewards added!')], components: [buildRow(true)] }).catch(() => {});
+      
+      const lootTable = WORLDS[player.world]?.lootTable || [];
+      const wonItemId = lootTable.length > 0 ? getRandomItem(lootTable) : null;
+      let lootMsg = '';
+      
+      if (wonItemId) {
+        // CALLING YOUR EXISTING MANAGER FUNCTION INSTEAD OF RAW PRISMA
+        await addItemToInventory(player.id, wonItemId, 1); 
+        lootMsg = `\n🎁 Found: ${ITEMS[wonItemId].emoji} ${ITEMS[wonItemId].name}`;
+      }
+
+      await interaction.editReply({ 
+        embeds: [new EmbedBuilder().setTitle('🏆 Boss Defeated!').setDescription(`Rewards: +${xpGain} XP, +${coinGain} coins${lootMsg}`)], 
+        components: [buildRow(true)] 
+      }).catch(() => {});
     } else {
       await interaction.editReply({ components: [buildRow(true)] }).catch(() => {});
     }
