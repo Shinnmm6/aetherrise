@@ -1,4 +1,3 @@
-cat << 'EOF' > commands/admin/admin.js
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { getOrCreatePlayer } = require('../../database/client');
 const { addItem, awardCoins, awardXP } = require('../../managers/playerManager');
@@ -24,7 +23,6 @@ module.exports = {
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))),
 
   async execute(interaction) {
-    // Acknowledge interaction immediately to prevent timeouts
     await interaction.deferReply({ ephemeral: true });
 
     const sub = interaction.options.getSubcommand();
@@ -62,17 +60,13 @@ module.exports = {
     if (sub === 'level_reset') {
       const target = interaction.options.getUser('user');
       const player = await getOrCreatePlayer(target.id, target.username);
-      
-      // Update DB to reset level/XP
-      // Adjust this based on your database structure (e.g., playerModel.update)
-      // Example assuming a direct DB call:
+      // Ensure your database client is available here. 
+      // If 'db' isn't global, you might need to import it.
       await global.db.query('UPDATE players SET level = 1, xp = 0 WHERE id = ?', [player.id]);
       try { await redis.del(`player:${target.id}`); } catch (e) {}
-      
       return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`✅ **${target.username}** has been reset to level 1.`)] });
     }
     
     return interaction.editReply({ content: 'Subcommand not recognized.' });
   },
 };
-EOF
