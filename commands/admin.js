@@ -80,8 +80,11 @@ module.exports = {
 
       if (sub === 'level_reset') {
         const target = interaction.options.getUser('user');
-        const player = await getOrCreatePlayer(target.id, target.username);
-        await prisma.player.update({ where: { id: player.id }, data: { level: 1, xp: 0 } });
+        await prisma.player.upsert({
+          where: { id: target.id },
+          update: { level: 1, xp: 0 },
+          create: { id: target.id, username: target.username, level: 1, xp: 0 }
+        });
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset **${target.username}** to Level 1.`) ] });
       }
       
