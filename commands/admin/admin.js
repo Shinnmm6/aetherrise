@@ -71,16 +71,12 @@ module.exports = {
 
       if (sub === 'cooldown_reset') {
         const target = interaction.options.getUser('user');
-        // Scan for keys containing the user ID. 
-        // This assumes your cooldown keys follow a pattern like "cooldown:command:userid"
-        let cursor = '0';
-        do {
-          const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', `*:${target.id}`, 'COUNT', '100');
-          cursor = nextCursor;
-          if (keys.length > 0) await redis.del(...keys);
-        } while (cursor !== '0');
-        
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset all cooldowns for **${target.username}**.`)] });
+        // Get all keys for this user specifically
+        const keys = await redis.keys(`*:${target.id}`);
+        if (keys.length > 0) {
+            await redis.del(keys);
+        }
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset **${keys.length}** cooldown keys for **${target.username}**.`)] });
       }
       
       return interaction.editReply({ content: 'Subcommand not recognized.' });
