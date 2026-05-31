@@ -19,11 +19,7 @@ module.exports = {
       .addIntegerOption(o => o.setName('quantity').setDescription('Quantity')))
     .addSubcommand(sub => sub.setName('give_xp').setDescription('Give XP')
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
-      .addIntegerOption(o => o.setName('amount').setDescription('Amount of XP').setRequired(true)))
-    .addSubcommand(sub => sub.setName('level_reset').setDescription('Reset a player to level 1')
-      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true)))
-    .addSubcommand(sub => sub.setName('cooldown_reset').setDescription('Reset all command cooldowns for a player')
-      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))),
+      .addIntegerOption(o => o.setName('amount').setDescription('Amount of XP').setRequired(true))),
 
   async autocomplete(interaction) {
     const focusedValue = interaction.options.getFocused();
@@ -43,7 +39,9 @@ module.exports = {
         const player = await getOrCreatePlayer(target.id, target.username);
         await awardCoins(player.id, amount);
         try { await redis.del(`player:${target.id}`); } catch (e) {}
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** coins to **${target.username}**.`)] });
+        return interaction.editReply({ 
+          embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** coins to **${target.username}**.`) ] 
+        });
       }
 
       if (sub === 'give_item') {
@@ -56,7 +54,9 @@ module.exports = {
 
         await addItem(player.id, itemId, qty);
         try { await redis.del(`inventory:${target.id}`); } catch (e) {}
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${ITEMS[itemId].name}** to **${target.username}**.`)] });
+        return interaction.editReply({ 
+          embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${ITEMS[itemId].name}** to **${target.username}**.`) ] 
+        });
       }
 
       if (sub === 'give_xp') {
@@ -65,22 +65,8 @@ module.exports = {
         const player = await getOrCreatePlayer(target.id, target.username);
         const { levelUps, newLevel } = await awardXP(player.id, amount);
         return interaction.editReply({ 
-          embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** XP to **${target.username}**. ${levelUps?.length ? `Leveled up to ${newLevel}!` : ''}`)] 
+          embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** XP to **${target.username}**. ${levelUps?.length ? `Leveled up to ${newLevel}!` : ''}`) ] 
         });
-      }
-
-      if (sub === 'level_reset') {
-        const target = interaction.options.getUser('user');
-        await prisma.player.update({ where: { discordId: target.id }, data: { level: 1, xp: 0 } });
-        try { await redis.del(`player:${target.id}`); } catch (e) {}
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`✅ **${target.username}** has been reset to level 1 and 0 XP.`)] });
-      }
-
-      if (sub === 'cooldown_reset') {
-        const target = interaction.options.getUser('user');
-        const keys = await redis.keys(`*${target.id}*`);
-        if (keys.length > 0) await redis.del(keys);
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset **${keys.length}** cooldowns for **${target.username}**.`)] });
       }
       
       return interaction.editReply({ content: 'Subcommand not recognized.' });

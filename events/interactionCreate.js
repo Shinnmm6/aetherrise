@@ -1,4 +1,3 @@
-const { EmbedBuilder } = require('discord.js');
 const { checkCooldown, setCooldown } = require('../database/redis');
 const { errorEmbed, cooldownEmbed } = require('../utils/helpers');
 const chalk = require('chalk');
@@ -6,7 +5,6 @@ const chalk = require('chalk');
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
-    // 1. Handle Autocomplete
     if (interaction.isAutocomplete()) {
       const command = interaction.client.commands.get(interaction.commandName);
       if (!command || !command.autocomplete) return;
@@ -18,14 +16,12 @@ module.exports = {
       return;
     }
 
-    // 2. Handle Chat Input Commands
     if (!interaction.isChatInputCommand()) return;
 
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // Defer
-    await interaction.deferReply({ ephemeral: true }).catch(console.error);
+    await interaction.deferReply().catch(console.error);
 
     try {
       if (command.cooldown) {
@@ -42,7 +38,7 @@ module.exports = {
       
       const errEmbed = errorEmbed('Something went wrong. Please try again!');
       await interaction.editReply({ embeds: [errEmbed] }).catch(() => {
-        interaction.followUp({ embeds: [errEmbed], ephemeral: true }).catch(console.error);
+        interaction.followUp({ embeds: [errEmbed] }).catch(console.error);
       });
     }
   },
