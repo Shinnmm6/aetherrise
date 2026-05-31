@@ -16,7 +16,7 @@ module.exports = {
   cooldown: COOLDOWN,
 
   async execute(interaction) {
-    await interaction.deferReply();
+    // Note: No deferReply() here because interactionCreate.js handles the initial response
     const player = await getOrCreatePlayer(interaction.user.id, interaction.user.username);
     await regenEnergy(player);
 
@@ -39,7 +39,6 @@ module.exports = {
     const result = await simulateCombat(player, enemy, stats);
 
     if (!result.won) {
-      // Lost fight
       const consolationXp = Math.floor(enemy.xp * 0.2);
       await awardXP(player.id, consolationXp);
 
@@ -65,7 +64,6 @@ module.exports = {
     await awardCoins(player.id, coinGain);
     const { levelUps, newLevel } = await awardXP(player.id, xpGain);
 
-    // Roll loot drops
     const drops = await rollWorldDrop(player.id, player.world, stats.luckBonus);
     const achievements = await checkAchievements({ ...player, monstersKilled: player.monstersKilled + 1 });
 
