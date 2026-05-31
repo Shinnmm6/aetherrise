@@ -1,3 +1,4 @@
+cat << 'EOF' > commands/admin/admin.js
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { getOrCreatePlayer } = require('../../database/client');
 const { addItem, awardCoins, awardXP } = require('../../managers/playerManager');
@@ -18,9 +19,14 @@ module.exports = {
       .addIntegerOption(o => o.setName('quantity').setDescription('Quantity')))
     .addSubcommand(sub => sub.setName('give_xp').setDescription('Give XP')
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
-      .addIntegerOption(o => o.setName('amount').setDescription('Amount of XP').setRequired(true))),
+      .addIntegerOption(o => o.setName('amount').setDescription('Amount of XP').setRequired(true)))
+    .addSubcommand(sub => sub.setName('level_reset').setDescription('Reset a player to level 1')
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))),
 
   async execute(interaction) {
+    // Acknowledge interaction immediately to prevent timeouts
+    await interaction.deferReply({ ephemeral: true });
+
     const sub = interaction.options.getSubcommand();
     const redis = getRedis();
 
@@ -52,7 +58,21 @@ module.exports = {
         embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${formatNumber(amount)}** XP to **${target.username}**. ${levelUps?.length ? `Leveled up to ${newLevel}!` : ''}`)] 
       });
     }
+
+    if (sub === 'level_reset') {
+      const target = interaction.options.getUser('user');
+      const player = await getOrCreatePlayer(target.id, target.username);
+      
+      // Update DB to reset level/XP
+      // Adjust this based on your database structure (e.g., playerModel.update)
+      // Example assuming a direct DB call:
+      await global.db.query('UPDATE players SET level = 1, xp = 0 WHERE id = ?', [player.id]);
+      try { await redis.del(`player:${target.id}`); } catch (e) {}
+      
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`✅ **${target.username}** has been reset to level 1.`)] });
+    }
     
     return interaction.editReply({ content: 'Subcommand not recognized.' });
   },
 };
+EOF
