@@ -6,13 +6,26 @@ const chalk = require('chalk');
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
+    // 1. Handle Autocomplete
+    if (interaction.isAutocomplete()) {
+      const command = interaction.client.commands.get(interaction.commandName);
+      if (!command || !command.autocomplete) return;
+      try {
+        await command.autocomplete(interaction);
+      } catch (error) {
+        console.error(chalk.red(`Error in autocomplete /${interaction.commandName}:`), error);
+      }
+      return;
+    }
+
+    // 2. Handle Chat Input Commands
     if (!interaction.isChatInputCommand()) return;
 
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
     // Defer
-    await interaction.deferReply().catch(console.error);
+    await interaction.deferReply({ ephemeral: true }).catch(console.error);
 
     try {
       if (command.cooldown) {
@@ -27,10 +40,8 @@ module.exports = {
     } catch (error) {
       console.error(chalk.red(`Error in /${interaction.commandName}:`), error);
       
-      // If we are still "thinking" because of an error, send the error message
       const errEmbed = errorEmbed('Something went wrong. Please try again!');
       await interaction.editReply({ embeds: [errEmbed] }).catch(() => {
-        // If editReply fails, try a followUp
         interaction.followUp({ embeds: [errEmbed], ephemeral: true }).catch(console.error);
       });
     }

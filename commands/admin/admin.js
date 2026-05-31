@@ -33,10 +33,6 @@ module.exports = {
   },
 
   async execute(interaction) {
-    if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferReply({ ephemeral: true });
-    }
-
     const sub = interaction.options.getSubcommand();
     const redis = getRedis();
 
