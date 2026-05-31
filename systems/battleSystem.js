@@ -85,15 +85,20 @@ async function startBossBattle(interaction, player, bossData) {
       
       await awardXP(player.id, xpGain);
       await awardCoins(player.id, coinGain);
-      await prisma.player.update({ where: { id: player.id }, data: { bossesKilled: { increment: 1 } } });
+      await prisma.player.update({ where: { id: player.id }, data: { bossesKilled: { increment: 1 } } }).catch(() => {});
       
       const lootTable = WORLDS[player.world]?.lootTable || [];
       const wonItemId = lootTable.length > 0 ? getRandomItem(lootTable) : null;
       let lootMsg = '';
       
       if (wonItemId) {
-        // Direct DB write - No external manager dependency
-        await prisma.inventory.create({ data: { playerId: player.id, itemId: wonItemId, quantity: 1 } }).catch(console.error);
+        // Correctly using upsert to handle new or existing inventory items
+        await prisma.inventoryItem.upsert({
+          where: { playerId_itemId: { playerId: player.id, itemId: wonItemId } },
+          update: { quantity: { increment: 1 } },
+          create: { playerId: player.id, itemId: wonItemId, quantity: 1 }
+        }).catch(console.error);
+        
         lootMsg = `\n🎁 Found: ${ITEMS[wonItemId].emoji} ${ITEMS[wonItemId].name}`;
       }
 
