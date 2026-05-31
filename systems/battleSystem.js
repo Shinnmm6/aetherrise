@@ -5,8 +5,9 @@ const { getPlayerStats, awardXP, awardCoins } = require('../managers/playerManag
 const { randomInt, formatNumber, progressBar } = require('../utils/helpers');
 
 async function startBossBattle(interaction, player, bossData) {
-  // Defer reply immediately to handle interaction
-  await interaction.deferReply();
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply();
+  }
   
   const stats = await getPlayerStats(player.id);
   let playerHp = 100 + player.level * 15;
@@ -53,7 +54,6 @@ async function startBossBattle(interaction, player, bossData) {
     if (ended) return;
     await btnInteraction.deferUpdate();
     turn++;
-
     let defending = false;
     const action = btnInteraction.customId;
 
