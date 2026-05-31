@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { getOrCreatePlayer, db } = require('../../database/client'); // Import 'db' here
+const { getOrCreatePlayer, prisma } = require('../../database/client');
 const { addItem, awardCoins, awardXP } = require('../../managers/playerManager');
 const { formatNumber } = require('../../utils/helpers');
 const { getRedis } = require('../../database/redis');
@@ -62,17 +62,18 @@ module.exports = {
 
       if (sub === 'level_reset') {
         const target = interaction.options.getUser('user');
-        const player = await getOrCreatePlayer(target.id, target.username);
-        // Using the imported 'db'
-        await db.query('UPDATE players SET level = 1, xp = 0 WHERE id = ?', [player.id]);
+        await prisma.player.update({
+          where: { discordId: target.id },
+          data: { level: 1, xp: 0 }
+        });
         try { await redis.del(`player:${target.id}`); } catch (e) {}
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`✅ **${target.username}** has been reset to level 1.`)] });
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`✅ **${target.username}** has been reset to level 1 and 0 XP.`)] });
       }
       
       return interaction.editReply({ content: 'Subcommand not recognized.' });
     } catch (err) {
       console.error(err);
-      return interaction.editReply({ content: '❌ An error occurred executing this command.' });
+      return interaction.editReply({ content: '❌ Failed: Make sure the user has an account in the database.' });
     }
   },
 };
