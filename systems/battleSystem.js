@@ -12,9 +12,6 @@ async function simulateCombat(player, enemy, stats) {
   const enemyHp = enemy.hp || (enemy.stats ? enemy.stats.hp : 50);
   const dmg = Math.floor(stats.atk * (0.8 + Math.random() * 0.4));
   const hpLost = Math.max(1, enemy.atk - stats.def);
-  
-  // Logic Fix: You win if your attack is at least 20% of the enemy's total HP,
-  // or if your damage is just generally high enough relative to the foe.
   const won = dmg >= (enemyHp * 0.2); 
   
   const logMsg = won ? '🎉 You defeated the ' + enemy.name + '!' : '💀 You took ' + hpLost + ' damage';
@@ -44,8 +41,8 @@ async function startBossBattle(interaction, player, bossData) {
       .setTitle('⚔️ BOSS BATTLE: ' + bossData.emoji + ' ' + bossData.name)
       .setDescription(battleLog.slice(-5).join('\n') || '*Battle begins!*')
       .addFields(
-        { name: bossData.emoji + ' ' + bossData.name, value: '❤️ `' + progressBar(bossHp, bossMaxHp, 15) + '` ' + formatNumber(bossHp) + ' HP' },
-        { name: '🧙 You', value: '❤️ `' + progressBar(playerHp, playerMaxHp, 15) + '` ' + playerHp + ' HP\n💙 MP: ' + playerMp + '/50' }
+        { name: bossData.emoji + ' ' + bossData.name, value: '❤️  ' + formatNumber(bossHp) + ' HP' },
+        { name: '🧙 You', value: '❤️  ' + playerHp + ' HP\n💙 MP: ' + playerMp + '/50' }
       )
       .setFooter({ text: 'Turn ' + turn + ' • Your move!' });
 
@@ -110,17 +107,21 @@ async function startBossBattle(interaction, player, bossData) {
       let lootMsg = '';
       
       if (wonItemId) {
-        await prisma.inventoryItem.upsert({
-          where: { playerId_itemId: { playerId: player.id, itemId: wonItemId } },
-          update: { quantity: { increment: 1 } },
-          create: { playerId: player.id, itemId: wonItemId, quantity: 1 }
-        }).catch(console.error);
-        
-        lootMsg = '\n🎁 Found: ' + ITEMS[wonItemId].emoji + ' ' + ITEMS[wonItemId].name;
+        const itemData = ITEMS[wonItemId];
+        if (itemData) {
+            await prisma.inventoryItem.upsert({
+                where: { playerId_itemId: { playerId: player.id, itemId: wonItemId } },
+                update: { quantity: { increment: 1 } },
+                create: { playerId: player.id, itemId: wonItemId, quantity: 1 }
+            }).catch(console.error);
+            lootMsg = `\n🎁 Found: ${itemData.emoji} ${itemData.name}`;
+        } else {
+            console.error(`Item ID ${wonItemId} missing in ITEMS config.`);
+        }
       }
 
       await interaction.editReply({ 
-        embeds: [new EmbedBuilder().setTitle('🏆 Boss Defeated!').setDescription('Rewards: +' + xpGain + ' XP, +' + coinGain + ' coins' + lootMsg)], 
+        embeds: [new EmbedBuilder().setTitle('🏆 Boss Defeated!').setDescription(`Rewards: +${xpGain} XP, +${coinGain} coins${lootMsg}`)], 
         components: [buildRow(true)] 
       }).catch(() => {});
     } else {
