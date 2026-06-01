@@ -1,16 +1,14 @@
 const { checkCooldown, setCooldown } = require('../database/redis');
 const { errorEmbed, cooldownEmbed } = require('../utils/helpers');
-const { ChannelType, PermissionsBitField } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField } = require('discord.js');
 const chalk = require('chalk');
 
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
-    // --- BUTTON HANDLER ---
     if (interaction.isButton()) {
       if (interaction.customId === 'create_ticket') {
         await interaction.deferReply({ ephemeral: true });
-
         const channel = await interaction.guild.channels.create({
           name: `ticket-${interaction.user.username.slice(0, 10)}-${interaction.user.id.slice(-4)}`,
           type: ChannelType.GuildText,
@@ -20,64 +18,49 @@ module.exports = {
             { id: interaction.client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
           ],
         });
-
+        const closeRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('close_ticket').setLabel('Close Ticket').setStyle(ButtonStyle.Danger)
+        );
         await interaction.editReply({ content: `✅ Ticket created: ${channel}` });
-        await channel.send(`Hello ${interaction.user}! A staff member will be with you shortly. Please describe your issue.`);
+        await channel.send({ content: `Hello ${interaction.user}! Please describe your issue.`, components: [closeRow] });
+        return;
+      }
+      if (interaction.customId === 'close_ticket') {
+        await interaction.reply('🔒 Closing this ticket in 5 seconds...');
+        setTimeout(async () => { await interaction.channel.delete().catch(console.error); }, 5000);
         return;
       }
     }
-
+    
+    // ... keep your existing autocomplete and command logic below this ...
     if (interaction.isAutocomplete()) {
-      const command = interaction.client.commands.get(interaction.commandName);
-      if (!command || !command.autocomplete) return;
-      try {
-        await command.autocomplete(interaction);
-      } catch (error) {
-        console.error(chalk.red(`Error in autocomplete /${interaction.commandName}:`), error);
-      }
-      return;
+        const command = interaction.client.commands.get(interaction.commandName);
+        if (!command || !command.autocomplete) return;
+        try { await command.autocomplete(interaction); } catch (error) { console.error(chalk.red(`Error in autocomplete /${interaction.commandName}:`), error); }
+        return;
     }
-
     if (!interaction.isChatInputCommand()) return;
-
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
-
-    // --- OWNER ONLY GATEKEEPER ---
     const restrictedCommands = ['admin', 'send_message'];
     const allowedOwners = ['1181235979286237264', '912889328814940201'];
-    
     if (restrictedCommands.includes(interaction.commandName)) {
       if (!allowedOwners.includes(interaction.user.id)) {
-        return interaction.reply({
-          content: '❌ This command is restricted to the game developer only.',
-          ephemeral: true
-        });
+        return interaction.reply({ content: '❌ This command is restricted to the game developer only.', ephemeral: true });
       }
     }
-    // --- END GATEKEEPER ---
-
-    if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferReply().catch(console.error);
-    }
-
+    if (!interaction.deferred && !interaction.replied) { await interaction.deferReply().catch(console.error); }
     try {
       if (command.cooldown) {
         const { onCooldown, remaining } = await checkCooldown(interaction.user.id, command.data.name);
-        if (onCooldown) {
-          return await interaction.editReply({ embeds: [cooldownEmbed(`/${command.data.name}`, remaining)] });
-        }
+        if (onCooldown) { return await interaction.editReply({ embeds: [cooldownEmbed(`/${command.data.name}`, remaining)] }); }
         await setCooldown(interaction.user.id, command.data.name, command.cooldown);
       }
-
       await command.execute(interaction);
     } catch (error) {
       console.error(chalk.red(`Error in /${interaction.commandName}:`), error);
-
       const errEmbed = errorEmbed('Something went wrong. Please try again!');
-      await interaction.editReply({ embeds: [errEmbed] }).catch(() => {
-        interaction.followUp({ embeds: [errEmbed] }).catch(console.error);
-      });
+      await interaction.editReply({ embeds: [errEmbed] }).catch(() => { interaction.followUp({ embeds: [errEmbed] }).catch(console.error); });
     }
   },
 };
