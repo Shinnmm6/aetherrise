@@ -18,7 +18,6 @@ module.exports = {
       )),
 
   async execute(interaction) {
-    // Only defer if not already done by interactionCreate.js
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply();
     }
@@ -27,17 +26,18 @@ module.exports = {
     const PAGE_SIZE = 10;
     let page = 0;
 
+    // FIX: All values in orderMap must be arrays
     const orderMap = {
-      level: { level: 'desc', prestige: 'desc' },
-      coins: { coins: 'desc' },
-      monsters: { monstersKilled: 'desc' },
-      bosses: { bossesKilled: 'desc' },
+      level: [{ level: 'desc' }, { prestige: 'desc' }],
+      coins: [{ coins: 'desc' }],
+      monsters: [{ monstersKilled: 'desc' }],
+      bosses: [{ bossesKilled: 'desc' }],
       prestige: [{ prestige: 'desc' }, { level: 'desc' }],
     };
 
     const getPlayers = async (pg) => {
       return await prisma.player.findMany({
-        orderBy: orderMap[type],
+        orderBy: orderMap[type], // Prisma now receives the expected array
         take: PAGE_SIZE,
         skip: pg * PAGE_SIZE,
         select: { username: true, level: true, coins: true, monstersKilled: true, bossesKilled: true, prestige: true, title: true },
