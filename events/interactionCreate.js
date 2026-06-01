@@ -1,10 +1,32 @@
 const { checkCooldown, setCooldown } = require('../database/redis');
 const { errorEmbed, cooldownEmbed } = require('../utils/helpers');
+const { ChannelType, PermissionsBitField } = require('discord.js');
 const chalk = require('chalk');
 
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
+    // --- BUTTON HANDLER ---
+    if (interaction.isButton()) {
+      if (interaction.customId === 'create_ticket') {
+        await interaction.deferReply({ ephemeral: true });
+
+        const channel = await interaction.guild.channels.create({
+          name: `ticket-${interaction.user.username.slice(0, 10)}-${interaction.user.id.slice(-4)}`,
+          type: ChannelType.GuildText,
+          permissionOverwrites: [
+            { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+            { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+            { id: interaction.client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+          ],
+        });
+
+        await interaction.editReply({ content: `✅ Ticket created: ${channel}` });
+        await channel.send(`Hello ${interaction.user}! A staff member will be with you shortly. Please describe your issue.`);
+        return;
+      }
+    }
+
     if (interaction.isAutocomplete()) {
       const command = interaction.client.commands.get(interaction.commandName);
       if (!command || !command.autocomplete) return;
@@ -35,7 +57,6 @@ module.exports = {
     }
     // --- END GATEKEEPER ---
 
-    // Fixed: Only defer if it hasn't been handled yet
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply().catch(console.error);
     }
