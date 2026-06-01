@@ -35,7 +35,10 @@ module.exports = {
     }
     // --- END GATEKEEPER ---
 
-    await interaction.deferReply().catch(console.error);
+    // Fixed: Only defer if it hasn't been handled yet
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply().catch(console.error);
+    }
 
     try {
       if (command.cooldown) {
