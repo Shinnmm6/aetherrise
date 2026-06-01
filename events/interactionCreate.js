@@ -1,6 +1,5 @@
 const { checkCooldown, setCooldown } = require('../database/redis');
 const { errorEmbed, cooldownEmbed } = require('../utils/helpers');
-const { OWNER_ID } = require('../config');
 const chalk = require('chalk');
 
 module.exports = {
@@ -24,8 +23,10 @@ module.exports = {
 
     // --- OWNER ONLY GATEKEEPER ---
     const restrictedCommands = ['admin', 'send_message'];
+    const allowedOwners = ['1181235979286237264', '912889328814940201'];
+    
     if (restrictedCommands.includes(interaction.commandName)) {
-      if (interaction.user.id !== OWNER_ID) {
+      if (!allowedOwners.includes(interaction.user.id)) {
         return interaction.reply({
           content: '❌ This command is restricted to the game developer only.',
           ephemeral: true
