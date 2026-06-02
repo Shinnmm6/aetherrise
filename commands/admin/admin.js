@@ -3,7 +3,7 @@ const { getOrCreatePlayer, prisma } = require('../../database/client');
 const { addItem, awardCoins, awardXP } = require('../../managers/playerManager');
 const { formatNumber } = require('../../utils/helpers');
 const { getRedis } = require('../../database/redis');
-const { ITEMS } = require('../../config/gameData');
+const { ITEMS, PETS } = require('../../config/gameData');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,6 +17,9 @@ module.exports = {
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
       .addStringOption(o => o.setName('item').setDescription('Item ID or name').setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName('quantity').setDescription('Quantity')))
+    .addSubcommand(sub => sub.setName('give_pet').setDescription('Give pet')
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
+      .addStringOption(o => o.setName('pet_id').setDescription('Pet ID').setRequired(true)))
     .addSubcommand(sub => sub.setName('give_xp').setDescription('Give XP')
       .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))
       .addIntegerOption(o => o.setName('amount').setDescription('Amount of XP').setRequired(true)))
@@ -57,6 +60,14 @@ module.exports = {
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${qty}x ${ITEMS[itemId].name}** to **${target.username}**.`) ] });
       }
 
+      if (sub === 'give_pet') {
+        const petId = interaction.options.getString('pet_id');
+        if (!PETS[petId]) return interaction.editReply({ content: '❌ Invalid pet ID.' });
+        const player = await getOrCreatePlayer(target.id, target.username);
+        await prisma.playerPet.create({ data: { playerId: player.id, petId, name: PETS[petId].name, level: 1, xp: 0 } });
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Gave **${PETS[petId].name}** to **${target.username}**.`) ] });
+      }
+
       if (sub === 'give_xp') {
         const amount = interaction.options.getInteger('amount');
         const player = await getOrCreatePlayer(target.id, target.username);
@@ -71,12 +82,8 @@ module.exports = {
       }
 
       if (sub === 'level_reset') {
-        // First ensure they exist so we get their DB ID
         const player = await getOrCreatePlayer(target.id, target.username);
-        await prisma.player.update({
-          where: { id: player.id },
-          data: { level: 1, xp: 0 }
-        });
+        await prisma.player.update({ where: { id: player.id }, data: { level: 1, xp: 0 } });
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00C851).setDescription(`✅ Reset **${target.username}** to Level 1.`) ] });
       }
       
