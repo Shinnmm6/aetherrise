@@ -5,11 +5,21 @@ module.exports = {
     .setName('moderate')
     .setDescription('Moderation tools')
     .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
-    .addSubcommand(sub => sub.setName('ban').setDescription('Ban a user').addUserOption(o => o.setName('user').setRequired(true)).addStringOption(o => o.setName('reason')))
-    .addSubcommand(sub => sub.setName('kick').setDescription('Kick a user').addUserOption(o => o.setName('user').setRequired(true)).addStringOption(o => o.setName('reason')))
-    .addSubcommand(sub => sub.setName('timeout').setDescription('Timeout a user').addUserOption(o => o.setName('user').setRequired(true)).addIntegerOption(o => o.setName('duration')).addStringOption(o => o.setName('reason')))
-    .addSubcommand(sub => sub.setName('warn').setDescription('Warn a user').addUserOption(o => o.setName('user').setRequired(true)).addStringOption(o => o.setName('reason').setRequired(true)))
-    .addSubcommand(sub => sub.setName('clear-warn').setDescription('Clear warnings for a user').addUserOption(o => o.setName('user').setRequired(true))),
+    .addSubcommand(sub => sub.setName('ban').setDescription('Ban a user')
+      .addUserOption(o => o.setName('user').setDescription('User to ban').setRequired(true))
+      .addStringOption(o => o.setName('reason').setDescription('Reason for ban')))
+    .addSubcommand(sub => sub.setName('kick').setDescription('Kick a user')
+      .addUserOption(o => o.setName('user').setDescription('User to kick').setRequired(true))
+      .addStringOption(o => o.setName('reason').setDescription('Reason for kick')))
+    .addSubcommand(sub => sub.setName('timeout').setDescription('Timeout a user')
+      .addUserOption(o => o.setName('user').setDescription('User to timeout').setRequired(true))
+      .addIntegerOption(o => o.setName('duration').setDescription('Minutes'))
+      .addStringOption(o => o.setName('reason').setDescription('Reason for timeout')))
+    .addSubcommand(sub => sub.setName('warn').setDescription('Warn a user')
+      .addUserOption(o => o.setName('user').setDescription('User to warn').setRequired(true))
+      .addStringOption(o => o.setName('reason').setDescription('Reason for warn').setRequired(true)))
+    .addSubcommand(sub => sub.setName('clear-warn').setDescription('Clear warnings')
+      .addUserOption(o => o.setName('user').setDescription('User to clear warnings').setRequired(true))),
 
   async execute(interaction) {
     if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true });
@@ -20,16 +30,12 @@ module.exports = {
 
     try {
       if (sub === 'warn') {
-        // Here you would add code to save the warning to your database!
         return interaction.editReply({ content: `⚠️ Warned ${member.user.tag} for: ${reason}` });
       } 
-      
       if (sub === 'clear-warn') {
-        // Here you would add code to remove warnings from your database!
         return interaction.editReply({ content: `✅ Cleared warnings for ${member.user.tag}.` });
       }
 
-      // Existing moderation logic
       if (!member.manageable) return interaction.editReply({ content: "❌ I cannot moderate this user." });
 
       if (sub === 'kick') {
