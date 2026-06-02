@@ -3,7 +3,7 @@ const { WORLDS, RARITIES } = require('../config/gameData');
 const { prisma } = require('../database/client');
 const { getPlayerStats, awardXP, awardCoins } = require('../managers/playerManager');
 const { rollWorldDrop } = require('../managers/lootManager');
-const { randomInt, formatNumber, progressBar } = require('../utils/helpers');
+const { randomInt, progressBar } = require('../utils/helpers');
 
 const DUNGEONS = {
   shadow_crypt: { name: '🌌 Shadow Crypt', world: 'void', minLevel: 50, floors: 5, description: 'Ancient burial grounds.', enemies: ['void_spawn', 'shadow_wraith'], floorMultiplier: 1.3, rewards: { coinBase: 5000, xpBase: 2000 } },
@@ -21,8 +21,6 @@ async function startDungeon(interaction, player, dungeonId) {
   let playerHp = 100 + player.level * 10;
   const playerMaxHp = playerHp;
   let floor = 1;
-  let totalCoins = 0;
-  let totalXp = 0;
   const log = [];
 
   const buildEmbed = () => new EmbedBuilder()
@@ -48,7 +46,19 @@ async function startDungeon(interaction, player, dungeonId) {
     await interaction.editReply({ embeds: [buildEmbed()], components: [buildRow()] });
   });
 
-  collector.on('end', () => interaction.editReply({ embeds: [new EmbedBuilder().setTitle('Dungeon Finished')], components: [buildRow(true)] }));
+  collector.on('end', async (collected, reason) => {
+    if (reason === 'end' && playerHp > 0) {
+      const earnedCoins = Math.floor(dungeon.rewards.coinBase * (floor * dungeon.floorMultiplier));
+      const earnedXp = Math.floor(dungeon.rewards.xpBase * (floor * dungeon.floorMultiplier));
+      await awardCoins(player.id, earnedCoins);
+      await awardXP(player.id, earnedXp);
+      const successEmbed = new EmbedBuilder().setTitle('🎉 Dungeon Cleared!').setDescription(`You survived and earned:\n💰 **${earnedCoins} Coins**\n✨ **${earnedXp} XP**`).setColor(0x00FF00);
+      await interaction.editReply({ embeds: [successEmbed], components: [buildRow(true)] });
+    } else {
+      const failEmbed = new EmbedBuilder().setTitle('💀 Dungeon Failed').setDescription('You retreated or fell in battle.').setColor(0xFF0000);
+      await interaction.editReply({ embeds: [failEmbed], components: [buildRow(true)] });
+    }
+  });
 }
 
 module.exports = { DUNGEONS, startDungeon };
