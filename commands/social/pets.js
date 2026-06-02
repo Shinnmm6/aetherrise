@@ -8,6 +8,7 @@ module.exports = {
     .setName('pets')
     .setDescription('View and manage your pets')
     .addSubcommand(sub => sub.setName('list').setDescription('View all your pets'))
+    .addSubcommand(sub => sub.setName('index').setDescription('View all possible pets in the game'))
     .addSubcommand(sub =>
       sub.setName('equip')
         .setDescription('Set your active pet')
@@ -22,12 +23,27 @@ module.exports = {
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
     const player = await getOrCreatePlayer(interaction.user.id, interaction.user.username);
+    
+    // Index subcommand doesn't need database pets
+    if (sub === 'index') {
+      const embed = new EmbedBuilder()
+        .setTitle('🐾 Pet Index')
+        .setDescription('All possible pets you can encounter:')
+        .setColor(0x00C8FF);
+      
+      Object.entries(PETS).forEach(([id, pet]) => {
+        const r = RARITIES[pet.rarity];
+        embed.addFields({ name: `${r?.emoji || '🐾'} ${pet.name}`, value: `${pet.passive}`, inline: true });
+      });
+      return interaction.editReply({ embeds: [embed] });
+    }
+
     const playerPets = await prisma.playerPet.findMany({ where: { playerId: player.id } });
 
     if (sub === 'list') {
       if (playerPets.length === 0) {
         return interaction.editReply({
-          embeds: [new EmbedBuilder().setColor(0xAAAAAA).setDescription('🐾 You have no pets! Pets drop from hunting and exploring.\nCheck rare world drops!')],
+          embeds: [new EmbedBuilder().setColor(0xAAAAAA).setDescription('🐾 You have no pets! Pets drop from hunting and exploring.')],
         });
       }
 
@@ -60,7 +76,6 @@ module.exports = {
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`❌ Pet "${query}" not found in your collection.`)], ephemeral: true });
       }
 
-      // Deactivate all, activate chosen
       await prisma.playerPet.updateMany({ where: { playerId: player.id }, data: { isActive: false } });
       await prisma.playerPet.update({ where: { id: found.id }, data: { isActive: true } });
 
