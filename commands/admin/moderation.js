@@ -10,15 +10,17 @@ module.exports = {
     .addSubcommand(sub => sub.setName('timeout').setDescription('Timeout a user').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)).addIntegerOption(o => o.setName('duration').setDescription('Minutes')).addStringOption(o => o.setName('reason').setDescription('Reason'))),
 
   async execute(interaction) {
-    // Defer reply immediately so Discord knows we are processing
-    await interaction.deferReply({ ephemeral: true });
+    // Only defer if not already replied or deferred
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: true });
+    }
 
     const sub = interaction.options.getSubcommand();
     const member = interaction.options.getMember('user');
     const reason = interaction.options.getString('reason') || 'No reason provided';
 
     if (!member.manageable) {
-      return interaction.editReply({ content: "❌ I cannot moderate this user (they have a higher role or I lack permissions)." });
+      return interaction.editReply({ content: "❌ I cannot moderate this user (they might have a higher role or I lack permissions)." });
     }
 
     try {
@@ -35,7 +37,7 @@ module.exports = {
       }
     } catch (error) {
       console.error(error);
-      await interaction.editReply({ content: '❌ Failed to moderate user. Please check my role hierarchy.' });
+      await interaction.editReply({ content: '❌ Failed to moderate user.' });
     }
   }
 };
