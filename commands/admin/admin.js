@@ -41,7 +41,6 @@ module.exports = {
   },
 
   async execute(interaction) {
-    // SMART DEFER: Only if not already handled
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ ephemeral: true });
     }
@@ -52,7 +51,10 @@ module.exports = {
 
     try {
       if (sub === 'level_reset') {
-        await prisma.player.update({ where: { userId: target.id }, data: { level: 1, xp: 0 } });
+        await prisma.player.update({ 
+          where: { discordId: target.id }, 
+          data: { level: 1, xp: 0 } 
+        });
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF4444).setDescription(`✅ Reset **${target.username}** to Level 1.`)] });
       }
 
@@ -87,7 +89,7 @@ module.exports = {
       }
     } catch (err) {
       console.error(err);
-      return interaction.editReply({ content: '❌ Database or Redis error occurred.' });
+      return interaction.editReply({ content: '❌ Database error: Ensure the player exists in the database.' });
     }
   },
 };
