@@ -41,7 +41,11 @@ module.exports = {
   },
 
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    // SMART DEFER: Only if not already handled
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: true });
+    }
+
     const sub = interaction.options.getSubcommand();
     const target = interaction.options.getUser('user');
     const redis = getRedis();
