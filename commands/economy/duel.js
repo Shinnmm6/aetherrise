@@ -1,8 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } = require('discord.js');
 const db = require('../../database/client'); 
-
-// Debugging line to see what the file actually exports
-console.log('DEBUG: database/client exports:', db);
+const prisma = db.prisma; // Access the client
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -12,17 +10,15 @@ module.exports = {
     .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
 
   async execute(interaction) {
-    // Accessing prisma from the 'db' object
-    const prisma = db.prisma || db; 
-    
     const opponent = interaction.options.getUser('opponent');
     const amount = interaction.options.getInteger('amount');
     const challenger = interaction.user;
 
     if (opponent.id === challenger.id) return interaction.reply({ content: "You can't duel yourself!", flags: [MessageFlags.Ephemeral] });
     
-    const p1 = await prisma.user.findUnique({ where: { id: challenger.id } });
-    if (!p1 || p1.balance < amount) return interaction.reply({ content: "You don't have enough gold!", flags: [MessageFlags.Ephemeral] });
+    // Use 'prisma.player' instead of 'prisma.user'
+    const p1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
+    if (!p1 || p1.coins < amount) return interaction.reply({ content: "You don't have enough coins!", flags: [MessageFlags.Ephemeral] });
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('accept').setLabel('Accept').setStyle(ButtonStyle.Success),
@@ -30,7 +26,7 @@ module.exports = {
     );
 
     const msg = await interaction.reply({
-      content: `${opponent}, ${challenger} has challenged you to a duel for **${amount} gold**!`,
+      content: `${opponent}, ${challenger} has challenged you to a duel for **${amount} coins**!`,
       components: [row],
       fetchReply: true
     });
@@ -41,26 +37,20 @@ module.exports = {
       if (i.user.id !== opponent.id) return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
       if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [] });
 
-      const p2 = await prisma.user.findUnique({ where: { id: opponent.id } });
-      if (!p2 || p2.balance < amount) return i.update({ content: "Opponent doesn't have enough gold!", components: [] });
+      const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
+      if (!p2 || p2.coins < amount) return i.update({ content: "Opponent doesn't have enough coins!", components: [] });
 
-      const powerA = (p1.attack || 1) * 0.7 + (p1.defense || 1) * 0.3;
-      const powerB = (p2.attack || 1) * 0.7 + (p2.defense || 1) * 0.3;
-      
-      const totalPower = powerA + powerB;
-      const winChanceA = powerA / totalPower;
-
-      const winner = Math.random() < winChanceA ? challenger : opponent;
+      const winner = Math.random() > 0.5 ? challenger : opponent;
       const loser = winner.id === challenger.id ? opponent : challenger;
 
-      await prisma.user.update({ where: { id: winner.id }, data: { balance: { increment: amount } } });
-      await prisma.user.update({ where: { id: loser.id }, data: { balance: { decrement: amount } } });
+      // Update balances (using BigInt strings or numbers depending on your setup)
+      await prisma.player.update({ where: { discordId: winner.id }, data: { coins: { increment: BigInt(amount) } } });
+      await prisma.player.update({ where: { discordId: loser.id }, data: { coins: { decrement: BigInt(amount) } } });
 
       const embed = new EmbedBuilder()
         .setTitle('⚔️ Duel Results')
         .setColor(0xFFD700)
-        .setDescription(`**${winner.username}** defeated **${loser.username}** and won **${amount} gold**!`)
-        .addFields({ name: 'Winner Power', value: `${Math.round(winner.id === challenger.id ? powerA : powerB)}` });
+        .setDescription(`**${winner.username}** defeated **${loser.username}** and won **${amount} coins**!`);
 
       i.update({ content: '', embeds: [embed], components: [] });
     });
