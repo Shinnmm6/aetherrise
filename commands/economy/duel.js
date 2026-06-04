@@ -17,12 +17,6 @@ module.exports = {
     const amount = interaction.options.getInteger('amount');
 
     if (opponent.id === challenger.id) return interaction.editReply({ content: "You can't duel yourself!" });
-    
-    const pChallenger = await prisma.player.findUnique({ where: { discordId: challenger.id } });
-    const pOpponent = await prisma.player.findUnique({ where: { discordId: opponent.id } });
-
-    if (!pChallenger || pChallenger.coins < BigInt(amount)) return interaction.editReply({ content: "You don't have enough coins!" });
-    if (!pOpponent || pOpponent.coins < BigInt(amount)) return interaction.editReply({ content: "Opponent doesn't have enough coins!" });
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('accept').setLabel('Accept').setStyle(ButtonStyle.Success),
@@ -41,34 +35,32 @@ module.exports = {
       if (i.user.id !== opponent.id) return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
       if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [] });
 
-      // DEBUG: Calculate chance
-      const p1Att = Number(pChallenger.attack);
-      const p2Att = Number(pOpponent.attack);
+      // FETCH FRESH STATS RIGHT NOW
+      const p1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
+      const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
+
+      if (!p1 || p1.coins < BigInt(amount)) return i.reply({ content: "Challenger no longer has enough coins!", flags: [MessageFlags.Ephemeral] });
+      if (!p2 || p2.coins < BigInt(amount)) return i.reply({ content: "Opponent no longer has enough coins!", flags: [MessageFlags.Ephemeral] });
+
+      const p1Att = Number(p1.attack || 0);
+      const p2Att = Number(p2.attack || 0);
       
-      const powerChallenger = Math.pow(p1Att, 1.5);
-      const powerOpponent = Math.pow(p2Att, 1.5);
-      const winChance = powerChallenger / (powerChallenger + powerOpponent);
+      const power1 = Math.pow(p1Att, 1.5);
+      const power2 = Math.pow(p2Att, 1.5);
+      const winChance = power1 / (power1 + power2);
       
       const roll = Math.random();
       const challengerWon = roll <= winChance;
 
-      // Force explicit assignment
-      let winner, loser;
-      if (challengerWon) {
-          winner = challenger;
-          loser = opponent;
-      } else {
-          winner = opponent;
-          loser = challenger;
-      }
+      const winner = challengerWon ? challenger : opponent;
+      const loser = challengerWon ? opponent : challenger;
 
-      // Update Database
       await prisma.player.update({ where: { discordId: winner.id }, data: { coins: { increment: BigInt(amount) } } });
-      await prisma.player.update({ where: { discordId: loser.id }, data: { coins: { decrement: BigInt(amount) } } });
+      await prisma.player.update({ where: { loser.id === challenger.id ? challenger.id : opponent.id }, data: { coins: { decrement: BigInt(amount) } } });
 
       const embed = new EmbedBuilder()
         .setTitle('⚔️ Duel Results')
-        .setDescription(`**${winner.username}** won!\n(Challenger Roll: ${roll.toFixed(3)} vs Chance: ${winChance.toFixed(3)})`);
+        .setDescription(`**${winner.username}** won!\n(Roll: ${roll.toFixed(3)} | Win Chance: ${winChance.toFixed(3)})`);
 
       i.update({ content: '', embeds: [embed], components: [] });
     });
