@@ -1,13 +1,12 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
-const { prisma } = require('../../database/client');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('giveaway')
     .setDescription('Host a new giveaway')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addSubcommand(sub => sub.setName('start').setDescription('Start a giveaway')
-      .addStringOption(o => o.setName('prize').setDescription('What is the prize?').setRequired(true))
+    .addSubcommand(sub => sub.setName('start').setDescription('Start a giveaway for any item')
+      .addStringOption(o => o.setName('prize').setDescription('What are you giving away?').setRequired(true))
       .addIntegerOption(o => o.setName('duration').setDescription('Duration in minutes').setRequired(true))),
 
   async execute(interaction) {
@@ -15,27 +14,17 @@ module.exports = {
 
     const prize = interaction.options.getString('prize');
     const duration = interaction.options.getInteger('duration');
-    const endTime = new Date(Date.now() + duration * 60000);
+    const endTime = Math.floor(Date.now() / 1000) + (duration * 60);
 
     const embed = new EmbedBuilder()
       .setTitle('🎉 New Giveaway!')
-      .setDescription(`Prize: **${prize}**\nEnds at: <t:${Math.floor(endTime.getTime() / 1000)}:R>`)
+      .setDescription(`Prize: **${prize}**\nEnds <t:${endTime}:R>`)
       .setColor(0x7289DA)
       .setFooter({ text: 'React with 🎉 to enter!' });
 
     const msg = await interaction.channel.send({ embeds: [embed] });
     await msg.react('🎉');
 
-    await prisma.giveaway.create({
-      data: {
-        messageId: msg.id,
-        channelId: msg.channel.id,
-        prize: prize,
-        endTime: endTime,
-        active: true
-      }
-    });
-
-    return interaction.editReply({ content: `✅ Giveaway for **${prize}** has been started!` });
+    return interaction.editReply({ content: `✅ Giveaway for **${prize}** has been started in <#${interaction.channel.id}>!` });
   }
 };
