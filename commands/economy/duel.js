@@ -41,23 +41,34 @@ module.exports = {
       if (i.user.id !== opponent.id) return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
       if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [] });
 
-      // Calculation: Higher attack = higher win chance
-      const powerChallenger = Math.pow(Number(pChallenger.attack), 1.5);
-      const powerOpponent = Math.pow(Number(pOpponent.attack), 1.5);
-      const winChanceForChallenger = powerChallenger / (powerChallenger + powerOpponent);
+      // DEBUG: Calculate chance
+      const p1Att = Number(pChallenger.attack);
+      const p2Att = Number(pOpponent.attack);
       
-      const isChallengerWinner = Math.random() < winChanceForChallenger;
+      const powerChallenger = Math.pow(p1Att, 1.5);
+      const powerOpponent = Math.pow(p2Att, 1.5);
+      const winChance = powerChallenger / (powerChallenger + powerOpponent);
       
-      const winner = isChallengerWinner ? challenger : opponent;
-      const loser = isChallengerWinner ? opponent : challenger;
+      const roll = Math.random();
+      const challengerWon = roll <= winChance;
 
+      // Force explicit assignment
+      let winner, loser;
+      if (challengerWon) {
+          winner = challenger;
+          loser = opponent;
+      } else {
+          winner = opponent;
+          loser = challenger;
+      }
+
+      // Update Database
       await prisma.player.update({ where: { discordId: winner.id }, data: { coins: { increment: BigInt(amount) } } });
       await prisma.player.update({ where: { discordId: loser.id }, data: { coins: { decrement: BigInt(amount) } } });
 
       const embed = new EmbedBuilder()
         .setTitle('⚔️ Duel Results')
-        .setColor(isChallengerWinner ? 0x00FF00 : 0xFF0000)
-        .setDescription(`**${winner.username}** won the duel against **${loser.username}**!`);
+        .setDescription(`**${winner.username}** won!\n(Challenger Roll: ${roll.toFixed(3)} vs Chance: ${winChance.toFixed(3)})`);
 
       i.update({ content: '', embeds: [embed], components: [] });
     });
