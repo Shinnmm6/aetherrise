@@ -38,17 +38,14 @@ module.exports = {
       const p1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
       const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
 
-      // Safety check: ensure both players exist in DB and have an attack stat
-      if (!p1 || !p2) return i.update({ content: "One of the players isn't registered in the database!", components: [] });
-      if (p1.coins < BigInt(amount) || p2.coins < BigInt(amount)) return i.update({ content: "Insufficient funds for the duel.", components: [] });
+      if (!p1 || !p2) return i.update({ content: "Players not found in database.", components: [] });
 
-      // Use a safe way to convert BigInt to Number
-      const getVal = (val) => (val !== undefined && val !== null ? Number(val.toString()) : 0);
-      const p1Att = getVal(p1.attack);
-      const p2Att = getVal(p2.attack);
+      // Using totalDamage instead of attack, as attack doesn't exist in your schema
+      const p1Att = Number(p1.totalDamage.toString());
+      const p2Att = Number(p2.totalDamage.toString());
       
-      const power1 = Math.pow(p1Att, 1.5);
-      const power2 = Math.pow(p2Att, 1.5);
+      const power1 = Math.pow(p1Att > 0 ? p1Att : 1, 1.5);
+      const power2 = Math.pow(p2Att > 0 ? p2Att : 1, 1.5);
       const winChance = power1 / (power1 + power2);
       
       const roll = Math.random();
