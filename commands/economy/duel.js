@@ -10,22 +10,24 @@ module.exports = {
     .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
 
   async execute(interaction) {
+    // Defer the reply to prevent "InteractionAlreadyReplied" errors
+    await interaction.deferReply();
+
     const opponent = interaction.options.getUser('opponent');
     const amount = interaction.options.getInteger('amount');
     const challenger = interaction.user;
 
-    if (opponent.id === challenger.id) return interaction.reply({ content: "You can't duel yourself!", flags: [MessageFlags.Ephemeral] });
+    if (opponent.id === challenger.id) return interaction.editReply({ content: "You can't duel yourself!" });
     
     const p1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
-    if (!p1 || p1.coins < BigInt(amount)) return interaction.reply({ content: "You don't have enough coins!", flags: [MessageFlags.Ephemeral] });
+    if (!p1 || p1.coins < BigInt(amount)) return interaction.editReply({ content: "You don't have enough coins!" });
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('accept').setLabel('Accept').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('decline').setLabel('Decline').setStyle(ButtonStyle.Danger)
     );
 
-    // Initial reply
-    await interaction.reply({
+    await interaction.editReply({
       content: `${opponent}, ${challenger} has challenged you to a duel for **${amount} coins**!`,
       components: [row]
     });
@@ -34,7 +36,9 @@ module.exports = {
     const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
     collector.on('collect', async (i) => {
-      if (i.user.id !== opponent.id) return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
+      if (i.user.id !== opponent.id) {
+        return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
+      }
       
       if (i.customId === 'decline') {
         return i.update({ content: 'Duel declined.', components: [] });
