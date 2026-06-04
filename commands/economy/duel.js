@@ -10,8 +10,10 @@ module.exports = {
     .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
 
   async execute(interaction) {
-    // Defer the reply to prevent "InteractionAlreadyReplied" errors
-    await interaction.deferReply();
+    // Check state to prevent double-reply error
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+    }
 
     const opponent = interaction.options.getUser('opponent');
     const amount = interaction.options.getInteger('amount');
