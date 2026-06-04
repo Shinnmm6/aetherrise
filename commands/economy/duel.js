@@ -4,12 +4,11 @@ const { prisma } = require('../../database/client');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('duel')
-    .setDescription('Challenge a player to a stat-based 1v1 duel')
+    .setDescription('Challenge a player to a 1v1 duel (Strict Power Rule)')
     .addUserOption(o => o.setName('opponent').setDescription('Player to challenge').setRequired(true))
     .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
 
   async execute(interaction) {
-    // Only defer if absolutely necessary and not already done by your event handler
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply();
     }
@@ -24,7 +23,7 @@ module.exports = {
     const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
 
     if (!p1 || !p2) return interaction.editReply("Both players must be registered.");
-    if (p1.coins < amount || p2.coins < amount) return interaction.editReply("Insufficient funds.");
+    if (p1.coins < amount || p2.coins < amount) return interaction.editReply("Insufficient funds for the duel.");
 
     const embed = new EmbedBuilder()
       .setTitle('⚔️ AetherRise Arena')
@@ -40,16 +39,13 @@ module.exports = {
       new ButtonBuilder().setCustomId('decline').setLabel('Decline').setStyle(ButtonStyle.Danger)
     );
 
-    // Use followUp if already deferred, otherwise editReply
     const msg = await interaction.editReply({ embeds: [embed], components: [row] });
-    
     const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
     collector.on('collect', async (i) => {
       if (i.user.id !== opponent.id) return i.reply({ content: "This is not your duel!", ephemeral: true });
       
       await i.deferUpdate();
-
       if (i.customId === 'decline') return i.editReply({ content: 'Duel declined.', components: [], embeds: [] });
 
       const stages = ["⚔️ Drawing weapons...", "💥 Blades clashing...", "⚡ Determining victor..."];
@@ -58,11 +54,9 @@ module.exports = {
         await new Promise(r => setTimeout(r, 1000));
       }
 
-      const p1Power = Math.pow(Number(p1.totalDamage), 1.5);
-      const p2Power = Math.pow(Number(p2.totalDamage), 1.5);
-      const winChance = p1Power / (p1Power + p2Power);
-      const challengerWon = Math.random() <= winChance;
-
+      // STRICT POWER LOGIC: Higher power always wins
+      const challengerWon = Number(p1.totalDamage) > Number(p2.totalDamage);
+      
       await prisma.player.update({ where: { id: challengerWon ? p1.id : p2.id }, data: { coins: { increment: amount } } });
       await prisma.player.update({ where: { id: challengerWon ? p2.id : p1.id }, data: { coins: { decrement: amount } } });
 
@@ -70,9 +64,11 @@ module.exports = {
       const resultEmbed = new EmbedBuilder()
         .setTitle('🏆 Duel Results')
         .setColor(0xF1C40F)
+        .setDescription(`The duel is over.`)
         .addFields(
           { name: 'Winner', value: winner.username, inline: true },
-          { name: 'Prize', value: `${amount * 2n} coins`, inline: true }
+          { name: 'Prize', value: `${amount * 2n} coins`, inline: true },
+          { name: 'Rule', value: 'Strict Power (Highest stat wins)', inline: true }
         );
 
       await i.editReply({ content: '', embeds: [resultEmbed], components: [] });
