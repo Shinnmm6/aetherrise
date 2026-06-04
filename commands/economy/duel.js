@@ -10,10 +10,7 @@ module.exports = {
     .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
 
   async execute(interaction) {
-    // Check state to prevent double-reply error
-    if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferReply();
-    }
+    if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
 
     const opponent = interaction.options.getUser('opponent');
     const amount = interaction.options.getInteger('amount');
@@ -22,7 +19,10 @@ module.exports = {
     if (opponent.id === challenger.id) return interaction.editReply({ content: "You can't duel yourself!" });
     
     const p1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
+    const p2_data = await prisma.player.findUnique({ where: { discordId: opponent.id } });
+
     if (!p1 || p1.coins < BigInt(amount)) return interaction.editReply({ content: "You don't have enough coins!" });
+    if (!p2_data || p2_data.coins < BigInt(amount)) return interaction.editReply({ content: "Opponent doesn't have enough coins!" });
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('accept').setLabel('Accept').setStyle(ButtonStyle.Success),
@@ -30,7 +30,7 @@ module.exports = {
     );
 
     await interaction.editReply({
-      content: `${opponent}, ${challenger} has challenged you to a duel for **${amount} coins**!`,
+      content: `${opponent}, ${challenger} has challenged you to a duel for **${amount} coins**! (Your Attack: ${p1.attack} vs ${p2_data.attack})`,
       components: [row]
     });
 
@@ -38,20 +38,16 @@ module.exports = {
     const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
     collector.on('collect', async (i) => {
-      if (i.user.id !== opponent.id) {
-        return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
-      }
-      
-      if (i.customId === 'decline') {
-        return i.update({ content: 'Duel declined.', components: [] });
-      }
+      if (i.user.id !== opponent.id) return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
+      if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [] });
 
-      const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
-      if (!p2 || p2.coins < BigInt(amount)) {
-        return i.reply({ content: "You don't have enough coins to accept!", flags: [MessageFlags.Ephemeral] });
-      }
+      // STAT-BASED CALCULATION
+      // Calculate win chance: (Challenger Attack) / (Challenger + Opponent Attack)
+      const totalAttack = Number(p1.attack) + Number(p2_data.attack);
+      const winChance = Number(p1.attack) / totalAttack;
+      const roll = Math.random();
 
-      const winner = Math.random() > 0.5 ? challenger : opponent;
+      const winner = roll < winChance ? challenger : opponent;
       const loser = winner.id === challenger.id ? opponent : challenger;
 
       await prisma.player.update({ where: { discordId: winner.id }, data: { coins: { increment: BigInt(amount) } } });
@@ -60,7 +56,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('⚔️ Duel Results')
         .setColor(0xFFD700)
-        .setDescription(`**${winner.username}** defeated **${loser.username}** and won **${amount} coins**!`);
+        .setDescription(`**${winner.username}** won the duel! (Roll: ${(roll * 100).toFixed(1)}% vs Win Chance: ${(winChance * 100).toFixed(1)}%)`);
 
       i.update({ content: '', embeds: [embed], components: [] });
     });
