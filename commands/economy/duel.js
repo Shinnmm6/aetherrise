@@ -30,7 +30,7 @@ module.exports = {
     );
 
     await interaction.editReply({
-      content: `${opponent}, ${challenger} has challenged you to a duel for **${amount} coins**! (Your Attack: ${p1.attack} vs ${p2_data.attack})`,
+      content: `${opponent}, ${challenger} has challenged you to a duel for **${amount} coins**!`,
       components: [row]
     });
 
@@ -41,12 +41,13 @@ module.exports = {
       if (i.user.id !== opponent.id) return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
       if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [] });
 
-      // STAT-BASED CALCULATION
-      // Calculate win chance: (Challenger Attack) / (Challenger + Opponent Attack)
-      const totalAttack = Number(p1.attack) + Number(p2_data.attack);
-      const winChance = Number(p1.attack) / totalAttack;
+      // EXPONENTIAL SCALING: Square the stats to widen the gap between high/low
+      // This makes 1.8k vs 12 result in a massive power difference
+      const power1 = Math.pow(Number(p1.attack), 1.5);
+      const power2 = Math.pow(Number(p2_data.attack), 1.5);
+      const winChance = power1 / (power1 + power2);
+      
       const roll = Math.random();
-
       const winner = roll < winChance ? challenger : opponent;
       const loser = winner.id === challenger.id ? opponent : challenger;
 
@@ -56,7 +57,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('⚔️ Duel Results')
         .setColor(0xFFD700)
-        .setDescription(`**${winner.username}** won the duel! (Roll: ${(roll * 100).toFixed(1)}% vs Win Chance: ${(winChance * 100).toFixed(1)}%)`);
+        .setDescription(`**${winner.username}** crushed their opponent!`);
 
       i.update({ content: '', embeds: [embed], components: [] });
     });
