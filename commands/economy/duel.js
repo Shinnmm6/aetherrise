@@ -41,8 +41,9 @@ module.exports = {
       if (!p1 || p1.coins < BigInt(amount)) return i.reply({ content: "Challenger no longer has enough coins!", flags: [MessageFlags.Ephemeral] });
       if (!p2 || p2.coins < BigInt(amount)) return i.reply({ content: "Opponent no longer has enough coins!", flags: [MessageFlags.Ephemeral] });
 
-      const p1Att = Number(p1.attack || 0);
-      const p2Att = Number(p2.attack || 0);
+      // FIX: Convert BigInt to Number correctly
+      const p1Att = Number(p1.attack.toString());
+      const p2Att = Number(p2.attack.toString());
       
       const power1 = Math.pow(p1Att, 1.5);
       const power2 = Math.pow(p2Att, 1.5);
