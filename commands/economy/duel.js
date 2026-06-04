@@ -35,7 +35,6 @@ module.exports = {
       if (i.user.id !== opponent.id) return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
       if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [] });
 
-      // FETCH FRESH STATS RIGHT NOW
       const p1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
       const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
 
@@ -56,7 +55,7 @@ module.exports = {
       const loser = challengerWon ? opponent : challenger;
 
       await prisma.player.update({ where: { discordId: winner.id }, data: { coins: { increment: BigInt(amount) } } });
-      await prisma.player.update({ where: { loser.id === challenger.id ? challenger.id : opponent.id }, data: { coins: { decrement: BigInt(amount) } } });
+      await prisma.player.update({ where: { discordId: loser.id }, data: { coins: { decrement: BigInt(amount) } } });
 
       const embed = new EmbedBuilder()
         .setTitle('⚔️ Duel Results')
