@@ -12,17 +12,17 @@ module.exports = {
   async execute(interaction) {
     if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
 
+    const challenger = interaction.user;
     const opponent = interaction.options.getUser('opponent');
     const amount = interaction.options.getInteger('amount');
-    const challenger = interaction.user;
 
     if (opponent.id === challenger.id) return interaction.editReply({ content: "You can't duel yourself!" });
     
-    const p1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
-    const p2_data = await prisma.player.findUnique({ where: { discordId: opponent.id } });
+    const pChallenger = await prisma.player.findUnique({ where: { discordId: challenger.id } });
+    const pOpponent = await prisma.player.findUnique({ where: { discordId: opponent.id } });
 
-    if (!p1 || p1.coins < BigInt(amount)) return interaction.editReply({ content: "You don't have enough coins!" });
-    if (!p2_data || p2_data.coins < BigInt(amount)) return interaction.editReply({ content: "Opponent doesn't have enough coins!" });
+    if (!pChallenger || pChallenger.coins < BigInt(amount)) return interaction.editReply({ content: "You don't have enough coins!" });
+    if (!pOpponent || pOpponent.coins < BigInt(amount)) return interaction.editReply({ content: "Opponent doesn't have enough coins!" });
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('accept').setLabel('Accept').setStyle(ButtonStyle.Success),
@@ -41,23 +41,23 @@ module.exports = {
       if (i.user.id !== opponent.id) return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
       if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [] });
 
-      // EXPONENTIAL SCALING: Square the stats to widen the gap between high/low
-      // This makes 1.8k vs 12 result in a massive power difference
-      const power1 = Math.pow(Number(p1.attack), 1.5);
-      const power2 = Math.pow(Number(p2_data.attack), 1.5);
-      const winChance = power1 / (power1 + power2);
+      // Calculation: Higher attack = higher win chance
+      const powerChallenger = Math.pow(Number(pChallenger.attack), 1.5);
+      const powerOpponent = Math.pow(Number(pOpponent.attack), 1.5);
+      const winChanceForChallenger = powerChallenger / (powerChallenger + powerOpponent);
       
-      const roll = Math.random();
-      const winner = roll < winChance ? challenger : opponent;
-      const loser = winner.id === challenger.id ? opponent : challenger;
+      const isChallengerWinner = Math.random() < winChanceForChallenger;
+      
+      const winner = isChallengerWinner ? challenger : opponent;
+      const loser = isChallengerWinner ? opponent : challenger;
 
       await prisma.player.update({ where: { discordId: winner.id }, data: { coins: { increment: BigInt(amount) } } });
       await prisma.player.update({ where: { discordId: loser.id }, data: { coins: { decrement: BigInt(amount) } } });
 
       const embed = new EmbedBuilder()
         .setTitle('⚔️ Duel Results')
-        .setColor(0xFFD700)
-        .setDescription(`**${winner.username}** crushed their opponent!`);
+        .setColor(isChallengerWinner ? 0x00FF00 : 0xFF0000)
+        .setDescription(`**${winner.username}** won the duel against **${loser.username}**!`);
 
       i.update({ content: '', embeds: [embed], components: [] });
     });
