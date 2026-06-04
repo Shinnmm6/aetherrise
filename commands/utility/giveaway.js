@@ -10,7 +10,7 @@ module.exports = {
       .addIntegerOption(o => o.setName('duration').setDescription('Duration in minutes').setRequired(true))),
 
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    // REMOVED: interaction.deferReply() - the event handler does this already
     const prize = interaction.options.getString('prize');
     const duration = interaction.options.getInteger('duration');
 
@@ -25,8 +25,10 @@ module.exports = {
       .setDescription(`Prize: **${prize}**\nTime: ${duration} minutes\n\nEntries: **0**`)
       .setColor(0x7289DA);
 
+    // Use editReply instead of channel.send if already deferred, 
+    // or use interaction.followUp to send the main message
     const msg = await interaction.channel.send({ embeds: [embed], components: [row] });
-    await interaction.editReply({ content: `✅ Giveaway started!` });
+    await interaction.editReply({ content: `✅ Giveaway started in <#${interaction.channel.id}>!`, ephemeral: true });
 
     const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: duration * 60000 });
 
@@ -37,13 +39,13 @@ module.exports = {
       
       joinedUsers.add(i.user.id);
       
-      // Update entry count
       const updatedEmbed = EmbedBuilder.from(embed).setDescription(`Prize: **${prize}**\nTime: ${duration} minutes\n\nEntries: **${joinedUsers.size}**`);
       await i.update({ embeds: [updatedEmbed], components: [row] });
     });
 
     collector.on('end', async () => {
-      const winner = Array.from(joinedUsers)[Math.floor(Math.random() * joinedUsers.size)];
+      const usersArray = Array.from(joinedUsers);
+      const winner = usersArray.length > 0 ? usersArray[Math.floor(Math.random() * usersArray.length)] : null;
       
       const finishedEmbed = EmbedBuilder.from(embed).setTitle('🎉 Giveaway Ended').setDescription(`Prize: **${prize}**\nWinner: ${winner ? `<@${winner}>` : 'None'}`);
       await msg.edit({ embeds: [finishedEmbed], components: [] });
