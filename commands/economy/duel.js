@@ -9,7 +9,11 @@ module.exports = {
     .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
 
   async execute(interaction) {
-    await interaction.deferReply();
+    // FIX: Only defer if it hasn't been replied or deferred already
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+    }
+
     const challenger = interaction.user;
     const opponent = interaction.options.getUser('opponent');
     const amount = BigInt(interaction.options.getInteger('amount'));
@@ -22,7 +26,6 @@ module.exports = {
     if (!p1 || !p2) return interaction.editReply("Both players must be registered.");
     if (p1.coins < amount || p2.coins < amount) return interaction.editReply("Insufficient funds for the duel.");
 
-    // Professional Challenge Embed
     const embed = new EmbedBuilder()
       .setTitle('⚔️ AetherRise Arena')
       .setColor(0x7289DA)
@@ -46,25 +49,17 @@ module.exports = {
       if (i.user.id !== opponent.id) return i.reply({ content: "This is not your duel!", ephemeral: true });
       if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [], embeds: [] });
 
-      // Professional Animation Sequence
-      const animationSteps = [
-        "⚔️ Drawing weapons...",
-        "💥 Blades clashing in the arena...",
-        "⚡ Determining the victor..."
-      ];
-
+      const animationSteps = ["⚔️ Drawing weapons...", "💥 Blades clashing...", "⚡ Determining victor..."];
       for (const step of animationSteps) {
         await i.update({ content: step, embeds: [], components: [] });
-        await new Promise(resolve => setTimeout(resolve, 1200));
+        await new Promise(r => setTimeout(r, 1000));
       }
 
-      // Logic
       const p1Power = Math.pow(Number(p1.totalDamage), 1.5);
       const p2Power = Math.pow(Number(p2.totalDamage), 1.5);
       const winChance = p1Power / (p1Power + p2Power);
       const challengerWon = Math.random() <= winChance;
 
-      // Result Update
       await prisma.player.update({ where: { id: challengerWon ? p1.id : p2.id }, data: { coins: { increment: amount } } });
       await prisma.player.update({ where: { id: challengerWon ? p2.id : p1.id }, data: { coins: { decrement: amount } } });
 
@@ -72,7 +67,7 @@ module.exports = {
       const resultEmbed = new EmbedBuilder()
         .setTitle('🏆 Duel Results')
         .setColor(0xF1C40F)
-        .setDescription(`The dust has settled in the arena.`)
+        .setDescription(`The dust has settled.`)
         .addFields(
           { name: 'Winner', value: `**${winner.username}**`, inline: true },
           { name: 'Prize', value: `${amount * 2n} coins`, inline: true },
