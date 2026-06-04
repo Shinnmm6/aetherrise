@@ -9,7 +9,11 @@ module.exports = {
     .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
 
   async execute(interaction) {
-    await interaction.deferReply();
+    // Only defer if absolutely necessary and not already done by your event handler
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+    }
+
     const challenger = interaction.user;
     const opponent = interaction.options.getUser('opponent');
     const amount = BigInt(interaction.options.getInteger('amount'));
@@ -20,16 +24,15 @@ module.exports = {
     const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
 
     if (!p1 || !p2) return interaction.editReply("Both players must be registered.");
-    if (p1.coins < amount || p2.coins < amount) return interaction.editReply("Insufficient funds for the duel.");
+    if (p1.coins < amount || p2.coins < amount) return interaction.editReply("Insufficient funds.");
 
     const embed = new EmbedBuilder()
       .setTitle('⚔️ AetherRise Arena')
       .setColor(0x7289DA)
-      .setDescription(`${challenger} has challenged ${opponent} to a high-stakes duel!`)
+      .setDescription(`${challenger} has challenged ${opponent} to a duel!`)
       .addFields(
-        { name: 'Challenger', value: `${challenger.username}\n**Power:** ${p1.totalDamage}`, inline: true },
-        { name: 'VS', value: '---', inline: true },
-        { name: 'Defender', value: `${opponent.username}\n**Power:** ${p2.totalDamage}`, inline: true }
+        { name: 'Challenger', value: `${challenger.username}\nPower: ${p1.totalDamage}`, inline: true },
+        { name: 'Defender', value: `${opponent.username}\nPower: ${p2.totalDamage}`, inline: true }
       );
 
     const row = new ActionRowBuilder().addComponents(
@@ -37,18 +40,18 @@ module.exports = {
       new ButtonBuilder().setCustomId('decline').setLabel('Decline').setStyle(ButtonStyle.Danger)
     );
 
+    // Use followUp if already deferred, otherwise editReply
     const msg = await interaction.editReply({ embeds: [embed], components: [row] });
+    
     const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
     collector.on('collect', async (i) => {
       if (i.user.id !== opponent.id) return i.reply({ content: "This is not your duel!", ephemeral: true });
       
-      // Acknowledge the button press immediately
       await i.deferUpdate();
 
       if (i.customId === 'decline') return i.editReply({ content: 'Duel declined.', components: [], embeds: [] });
 
-      // Animation: Use editReply to update the same message
       const stages = ["⚔️ Drawing weapons...", "💥 Blades clashing...", "⚡ Determining victor..."];
       for (const stage of stages) {
         await i.editReply({ content: stage, embeds: [], components: [] });
@@ -67,14 +70,12 @@ module.exports = {
       const resultEmbed = new EmbedBuilder()
         .setTitle('🏆 Duel Results')
         .setColor(0xF1C40F)
-        .setDescription(`The dust has settled in the arena.`)
         .addFields(
-          { name: 'Winner', value: `**${winner.username}**`, inline: true },
-          { name: 'Prize', value: `${amount * 2n} coins`, inline: true },
-          { name: 'Win Odds', value: `${(winChance * 100).toFixed(1)}%`, inline: true }
+          { name: 'Winner', value: winner.username, inline: true },
+          { name: 'Prize', value: `${amount * 2n} coins`, inline: true }
         );
 
-      await i.editReply({ content: '', embeds: [resultEmbed] });
+      await i.editReply({ content: '', embeds: [resultEmbed], components: [] });
     });
   }
 };
