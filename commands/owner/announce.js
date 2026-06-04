@@ -13,9 +13,12 @@ module.exports = {
       return interaction.reply({ content: "❌ Unauthorized.", ephemeral: true });
     }
 
-    const msg = interaction.options.getString('message');
-    await interaction.deferReply({ ephemeral: true });
+    // Safe check: Only defer if it hasn't been deferred/replied yet
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: true });
+    }
 
+    const msg = interaction.options.getString('message');
     let successCount = 0;
     let failCount = 0;
 
