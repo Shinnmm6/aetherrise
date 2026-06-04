@@ -24,21 +24,26 @@ module.exports = {
       new ButtonBuilder().setCustomId('decline').setLabel('Decline').setStyle(ButtonStyle.Danger)
     );
 
-    const msg = await interaction.reply({
+    // Initial reply
+    await interaction.reply({
       content: `${opponent}, ${challenger} has challenged you to a duel for **${amount} coins**!`,
-      components: [row],
-      fetchReply: true
+      components: [row]
     });
 
+    const msg = await interaction.fetchReply();
     const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
     collector.on('collect', async (i) => {
-      // Use i.reply, not interaction.reply
       if (i.user.id !== opponent.id) return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
-      if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [] });
+      
+      if (i.customId === 'decline') {
+        return i.update({ content: 'Duel declined.', components: [] });
+      }
 
       const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
-      if (!p2 || p2.coins < BigInt(amount)) return i.update({ content: "Opponent doesn't have enough coins!", components: [] });
+      if (!p2 || p2.coins < BigInt(amount)) {
+        return i.reply({ content: "You don't have enough coins to accept!", flags: [MessageFlags.Ephemeral] });
+      }
 
       const winner = Math.random() > 0.5 ? challenger : opponent;
       const loser = winner.id === challenger.id ? opponent : challenger;
