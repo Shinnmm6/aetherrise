@@ -4,11 +4,25 @@ const chalk = require('chalk');
 let redis = null;
 
 async function initRedis() {
+  redis = createClient({ 
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    socket: {
+      reconnectStrategy: (retries) => {
+        if (retries > 10) {
+          console.error(chalk.red('❌ Redis: Max reconnection attempts reached.'));
+          return new Error('Max retries reached');
+        }
+        return Math.min(retries * 1000, 5000); // Backoff: 1s, 2s, 3s, 4s, 5s...
+      }
+    }
+  });
+
+  redis.on('error', (err) => console.error(chalk.red('Redis error:'), err));
+  redis.on('connect', () => console.log(chalk.blue('ℹ️  Redis: Connecting...')));
+  redis.on('ready', () => console.log(chalk.green('✅ Redis: Connected and ready')));
+
   try {
-    redis = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
-    redis.on('error', (err) => console.error('Redis error:', err));
     await redis.connect();
-    console.log(chalk.green('✅ Redis connected successfully'));
   } catch (error) {
     console.warn(chalk.yellow('⚠️  Redis unavailable, using in-memory fallback'));
     redis = createMemoryFallback();
@@ -53,7 +67,8 @@ async function checkCooldown(playerId, command) {
   const key = `cd:${playerId}:${command}`;
   const expiresAt = await redis.get(key);
   if (!expiresAt) return { onCooldown: false, remaining: 0 };
-  const remaining = parseInt(expiresAt) - Date.now();
+  const now = Date.now();
+  const remaining = parseInt(expiresAt) - now;
   if (remaining <= 0) return { onCooldown: false, remaining: 0 };
   return { onCooldown: true, remaining: Math.ceil(remaining / 1000) };
 }
