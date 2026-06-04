@@ -5,29 +5,26 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('duel')
     .setDescription('Challenge a player to a 1v1 duel')
-    .addUserOption(o => o.setName('opponent').setDescription('Player to challenge').setRequired(true))
-    .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
+    .addUserOption(o => o.setName('opponent').setDescription('Opponent').setRequired(true))
+    .addIntegerOption(o => o.setName('amount').setDescription('Amount').setRequired(true)),
 
   async execute(interaction) {
     if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
 
-    const challenger = interaction.user;
-    const opponent = interaction.options.getUser('opponent');
+    const p1 = await prisma.player.findUnique({ where: { discordId: interaction.user.id } });
+    const p2 = await prisma.player.findUnique({ where: { discordId: interaction.options.getUser('opponent').id } });
     const amount = BigInt(interaction.options.getInteger('amount'));
 
-    if (opponent.id === challenger.id) return interaction.editReply("You can't duel yourself!");
-
-    const p1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
-    const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
-
     if (!p1 || !p2) return interaction.editReply("Both players must be registered.");
+    if (p1.id === p2.id) return interaction.editReply("You can't duel yourself!");
+    if (p1.coins < amount || p2.coins < amount) return interaction.editReply("Insufficient funds.");
 
     const embed = new EmbedBuilder()
       .setTitle('⚔️ AetherRise Arena')
       .setColor(0x7289DA)
       .addFields(
-        { name: 'Challenger', value: `${challenger.username}\nPower: ${p1.totalDamage}`, inline: true },
-        { name: 'Defender', value: `${opponent.username}\nPower: ${p2.totalDamage}`, inline: true }
+        { name: 'Challenger', value: `${p1.username}\nPower: ${p1.totalDamage}`, inline: true },
+        { name: 'Defender', value: `${p2.username}\nPower: ${p2.totalDamage}`, inline: true }
       );
 
     const row = new ActionRowBuilder().addComponents(
@@ -39,18 +36,25 @@ module.exports = {
     const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
     collector.on('collect', async (i) => {
-      if (i.user.id !== opponent.id) return i.reply({ content: "This is not your duel!", ephemeral: true });
+      if (i.user.id !== p2.discordId) return i.reply({ content: "This is not your duel!", ephemeral: true });
       await i.deferUpdate();
 
-      const challengerWon = Number(p1.totalDamage) > Number(p2.totalDamage);
-      
-      // Update by discordId to ensure accuracy
-      await prisma.player.update({ where: { discordId: challengerWon ? p1.discordId : p2.discordId }, data: { coins: { increment: amount } } });
-      await prisma.player.update({ where: { discordId: challengerWon ? p2.discordId : p1.discordId }, data: { coins: { decrement: amount } } });
+      const p1Power = BigInt(p1.totalDamage);
+      const p2Power = BigInt(p2.totalDamage);
+      const challengerWon = p1Power > p2Power;
 
-      const winnerName = challengerWon ? challenger.username : opponent.username;
+      // Safe If/Else Update Logic
+      if (challengerWon) {
+        await prisma.player.update({ where: { discordId: p1.discordId }, data: { coins: { increment: amount } } });
+        await prisma.player.update({ where: { discordId: p2.discordId }, data: { coins: { decrement: amount } } });
+      } else {
+        await prisma.player.update({ where: { discordId: p2.discordId }, data: { coins: { increment: amount } } });
+        await prisma.player.update({ where: { discordId: p1.discordId }, data: { coins: { decrement: amount } } });
+      }
+
+      const winnerName = challengerWon ? p1.username : p2.username;
       await i.editReply({ 
-        content: `🏆 **${winnerName} wins!** (Strict Power logic applied)`, 
+        content: `🏆 **${winnerName} wins the duel!**`, 
         embeds: [], components: [] 
       });
     });
