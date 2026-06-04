@@ -9,11 +9,7 @@ module.exports = {
     .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
 
   async execute(interaction) {
-    // FIX: Only defer if it hasn't been replied or deferred already
-    if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferReply();
-    }
-
+    await interaction.deferReply();
     const challenger = interaction.user;
     const opponent = interaction.options.getUser('opponent');
     const amount = BigInt(interaction.options.getInteger('amount'));
@@ -34,11 +30,10 @@ module.exports = {
         { name: 'Challenger', value: `${challenger.username}\n**Power:** ${p1.totalDamage}`, inline: true },
         { name: 'VS', value: '---', inline: true },
         { name: 'Defender', value: `${opponent.username}\n**Power:** ${p2.totalDamage}`, inline: true }
-      )
-      .setFooter({ text: 'Arena Stakes: ' + amount.toString() + ' coins' });
+      );
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('accept').setLabel('Accept Duel').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('accept').setLabel('Accept').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('decline').setLabel('Decline').setStyle(ButtonStyle.Danger)
     );
 
@@ -47,11 +42,16 @@ module.exports = {
 
     collector.on('collect', async (i) => {
       if (i.user.id !== opponent.id) return i.reply({ content: "This is not your duel!", ephemeral: true });
-      if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [], embeds: [] });
+      
+      // Acknowledge the button press immediately
+      await i.deferUpdate();
 
-      const animationSteps = ["⚔️ Drawing weapons...", "💥 Blades clashing...", "⚡ Determining victor..."];
-      for (const step of animationSteps) {
-        await i.update({ content: step, embeds: [], components: [] });
+      if (i.customId === 'decline') return i.editReply({ content: 'Duel declined.', components: [], embeds: [] });
+
+      // Animation: Use editReply to update the same message
+      const stages = ["⚔️ Drawing weapons...", "💥 Blades clashing...", "⚡ Determining victor..."];
+      for (const stage of stages) {
+        await i.editReply({ content: stage, embeds: [], components: [] });
         await new Promise(r => setTimeout(r, 1000));
       }
 
@@ -67,7 +67,7 @@ module.exports = {
       const resultEmbed = new EmbedBuilder()
         .setTitle('🏆 Duel Results')
         .setColor(0xF1C40F)
-        .setDescription(`The dust has settled.`)
+        .setDescription(`The dust has settled in the arena.`)
         .addFields(
           { name: 'Winner', value: `**${winner.username}**`, inline: true },
           { name: 'Prize', value: `${amount * 2n} coins`, inline: true },
