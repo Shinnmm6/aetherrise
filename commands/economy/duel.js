@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } = require('discord.js');
 const db = require('../../database/client'); 
-const prisma = db.prisma; // Access the client
+const prisma = db.prisma;
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,9 +16,8 @@ module.exports = {
 
     if (opponent.id === challenger.id) return interaction.reply({ content: "You can't duel yourself!", flags: [MessageFlags.Ephemeral] });
     
-    // Use 'prisma.player' instead of 'prisma.user'
     const p1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
-    if (!p1 || p1.coins < amount) return interaction.reply({ content: "You don't have enough coins!", flags: [MessageFlags.Ephemeral] });
+    if (!p1 || p1.coins < BigInt(amount)) return interaction.reply({ content: "You don't have enough coins!", flags: [MessageFlags.Ephemeral] });
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('accept').setLabel('Accept').setStyle(ButtonStyle.Success),
@@ -34,16 +33,16 @@ module.exports = {
     const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
     collector.on('collect', async (i) => {
+      // Use i.reply, not interaction.reply
       if (i.user.id !== opponent.id) return i.reply({ content: "This isn't your duel!", flags: [MessageFlags.Ephemeral] });
       if (i.customId === 'decline') return i.update({ content: 'Duel declined.', components: [] });
 
       const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
-      if (!p2 || p2.coins < amount) return i.update({ content: "Opponent doesn't have enough coins!", components: [] });
+      if (!p2 || p2.coins < BigInt(amount)) return i.update({ content: "Opponent doesn't have enough coins!", components: [] });
 
       const winner = Math.random() > 0.5 ? challenger : opponent;
       const loser = winner.id === challenger.id ? opponent : challenger;
 
-      // Update balances (using BigInt strings or numbers depending on your setup)
       await prisma.player.update({ where: { discordId: winner.id }, data: { coins: { increment: BigInt(amount) } } });
       await prisma.player.update({ where: { discordId: loser.id }, data: { coins: { decrement: BigInt(amount) } } });
 
