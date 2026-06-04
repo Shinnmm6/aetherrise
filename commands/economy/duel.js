@@ -1,5 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } = require('discord.js');
-const { prisma } = require('../../database/client'); // Destructured correctly
+const db = require('../../database/client'); 
+
+// Debugging line to see what the file actually exports
+console.log('DEBUG: database/client exports:', db);
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -9,13 +12,15 @@ module.exports = {
     .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
 
   async execute(interaction) {
+    // Accessing prisma from the 'db' object
+    const prisma = db.prisma || db; 
+    
     const opponent = interaction.options.getUser('opponent');
     const amount = interaction.options.getInteger('amount');
     const challenger = interaction.user;
 
     if (opponent.id === challenger.id) return interaction.reply({ content: "You can't duel yourself!", flags: [MessageFlags.Ephemeral] });
     
-    // Fetch challenger stats
     const p1 = await prisma.user.findUnique({ where: { id: challenger.id } });
     if (!p1 || p1.balance < amount) return interaction.reply({ content: "You don't have enough gold!", flags: [MessageFlags.Ephemeral] });
 
@@ -39,7 +44,6 @@ module.exports = {
       const p2 = await prisma.user.findUnique({ where: { id: opponent.id } });
       if (!p2 || p2.balance < amount) return i.update({ content: "Opponent doesn't have enough gold!", components: [] });
 
-      // Calculate Combat Power (default to 1 if stats are missing)
       const powerA = (p1.attack || 1) * 0.7 + (p1.defense || 1) * 0.3;
       const powerB = (p2.attack || 1) * 0.7 + (p2.defense || 1) * 0.3;
       
@@ -49,7 +53,6 @@ module.exports = {
       const winner = Math.random() < winChanceA ? challenger : opponent;
       const loser = winner.id === challenger.id ? opponent : challenger;
 
-      // Update Database
       await prisma.user.update({ where: { id: winner.id }, data: { balance: { increment: amount } } });
       await prisma.user.update({ where: { id: loser.id }, data: { balance: { decrement: amount } } });
 
