@@ -4,27 +4,30 @@ const { prisma } = require('../../database/client');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('duel')
-    .setDescription('Challenge a player to a 1v1 duel')
-    .addUserOption(o => o.setName('opponent').setDescription('Opponent').setRequired(true))
-    .addIntegerOption(o => o.setName('amount').setDescription('Amount').setRequired(true)),
+    .setDescription('Challenge a player to a stat-based duel')
+    .addUserOption(o => o.setName('opponent').setDescription('Target player').setRequired(true))
+    .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
 
   async execute(interaction) {
     if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
 
-    const p1 = await prisma.player.findUnique({ where: { discordId: interaction.user.id } });
-    const p2 = await prisma.player.findUnique({ where: { discordId: interaction.options.getUser('opponent').id } });
-    const amount = BigInt(interaction.options.getInteger('amount'));
+    const challenger = interaction.user;
+    const opponent = interaction.options.getUser('opponent');
+    const bet = BigInt(interaction.options.getInteger('amount'));
+
+    // Initial fetch to ensure players exist
+    const p1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
+    const p2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
 
     if (!p1 || !p2) return interaction.editReply("Both players must be registered.");
-    if (p1.id === p2.id) return interaction.editReply("You can't duel yourself!");
-    if (p1.coins < amount || p2.coins < amount) return interaction.editReply("Insufficient funds.");
+    if (p1.coins < bet || p2.coins < bet) return interaction.editReply("Both players need enough coins to cover the bet.");
 
     const embed = new EmbedBuilder()
       .setTitle('⚔️ AetherRise Arena')
-      .setColor(0x7289DA)
+      .setDescription(`${challenger} has challenged ${opponent} for **${bet} coins**!`)
       .addFields(
-        { name: 'Challenger', value: `${p1.username}\nPower: ${p1.totalDamage}`, inline: true },
-        { name: 'Defender', value: `${p2.username}\nPower: ${p2.totalDamage}`, inline: true }
+        { name: 'Challenger Power', value: p1.totalDamage.toString(), inline: true },
+        { name: 'Defender Power', value: p2.totalDamage.toString(), inline: true }
       );
 
     const row = new ActionRowBuilder().addComponents(
@@ -33,28 +36,35 @@ module.exports = {
     );
 
     const msg = await interaction.editReply({ embeds: [embed], components: [row] });
-    const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
+    const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
 
     collector.on('collect', async (i) => {
-      if (i.user.id !== p2.discordId) return i.reply({ content: "This is not your duel!", ephemeral: true });
+      if (i.user.id !== opponent.id) return i.reply({ content: "This is not your duel!", ephemeral: true });
       await i.deferUpdate();
 
-      const p1Power = BigInt(p1.totalDamage);
-      const p2Power = BigInt(p2.totalDamage);
-      const challengerWon = p1Power > p2Power;
+      // RE-FETCH STATS IMMEDIATELY BEFORE COMBAT
+      const latestP1 = await prisma.player.findUnique({ where: { discordId: challenger.id } });
+      const latestP2 = await prisma.player.findUnique({ where: { discordId: opponent.id } });
 
-      // Safe If/Else Update Logic
-      if (challengerWon) {
-        await prisma.player.update({ where: { discordId: p1.discordId }, data: { coins: { increment: amount } } });
-        await prisma.player.update({ where: { discordId: p2.discordId }, data: { coins: { decrement: amount } } });
-      } else {
-        await prisma.player.update({ where: { discordId: p2.discordId }, data: { coins: { increment: amount } } });
-        await prisma.player.update({ where: { discordId: p1.discordId }, data: { coins: { decrement: amount } } });
-      }
+      const p1Power = Number(latestP1.totalDamage);
+      const p2Power = Number(latestP2.totalDamage);
 
-      const winnerName = challengerWon ? p1.username : p2.username;
+      // Weighted Combat Logic:
+      // Winner is determined by: (PowerA) / (PowerA + PowerB)
+      // This ensures higher stats are strictly better, but feels like an RPG fight
+      const totalPower = p1Power + p2Power;
+      const winChance = totalPower > 0 ? (p1Power / totalPower) : 0.5;
+      const challengerWon = Math.random() < winChance;
+
+      // Execute Database Update
+      const winner = challengerWon ? latestP1 : latestP2;
+      const loser = challengerWon ? latestP2 : latestP1;
+
+      await prisma.player.update({ where: { discordId: winner.discordId }, data: { coins: { increment: bet } } });
+      await prisma.player.update({ where: { discordId: loser.discordId }, data: { coins: { decrement: bet } } });
+
       await i.editReply({ 
-        content: `🏆 **${winnerName} wins the duel!**`, 
+        content: `🏆 **${challengerWon ? challenger.username : opponent.username} wins!** (Stat-based roll result)`, 
         embeds: [], components: [] 
       });
     });
