@@ -2,8 +2,9 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getOrCreatePlayer, prisma } = require('../../database/client');
 const { awardCoins, awardXP } = require('../../managers/playerManager');
 const { randomInt, randomFrom, formatNumber } = require('../../utils/helpers');
+const { getVoteRow } = require('../../utils/buttons');
 
-const COOLDOWN = 1800; // 30 min
+const COOLDOWN = 1800;
 const JOBS = [
   { name: 'Blacksmith', emoji: '⚒️', flavor: 'forged swords all morning', coinMin: 200, coinMax: 450 },
   { name: 'Alchemist', emoji: '⚗️', flavor: 'brewed potions for the guild', coinMin: 250, coinMax: 500 },
@@ -47,6 +48,6 @@ module.exports = {
       })
       .setFooter({ text: 'Next shift available in 30 minutes' });
 
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed], components: [getVoteRow()] });
   },
 };
