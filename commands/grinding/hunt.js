@@ -6,6 +6,7 @@ const { simulateCombat } = require('../../systems/battleSystem');
 const { WORLDS, RARITIES } = require('../../config/gameData');
 const { randomFrom, randomInt, formatNumber, progressBar } = require('../../utils/helpers');
 const { updateQuestProgress } = require('../../managers/questManager');
+const { getVoteRow } = require('../../utils/buttons');
 
 const COOLDOWN = 30;
 
@@ -53,11 +54,10 @@ module.exports = {
 
     for (const drop of drops) {
       if (drop.isPet) {
-        // --- THIS IS THE FIX: SAVE PET TO DATABASE ---
         await prisma.playerPet.create({
           data: {
             playerId: player.id,
-            petId: drop.id, // Ensure this matches your pet data keys
+            petId: drop.id,
             name: drop.name,
             level: 1,
             xp: 0,
@@ -78,6 +78,9 @@ module.exports = {
       .setDescription((result.log || ['Combat occurred']).join('\n'))
       .addFields({ name: `═══ Rewards ═══`, value: rewardLines.join('\n'), inline: false });
 
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({ 
+        embeds: [embed],
+        components: [getVoteRow()]
+    });
   },
 };
