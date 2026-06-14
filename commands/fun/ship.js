@@ -25,8 +25,6 @@ module.exports = {
 
     
 
-    // Simple logic to keep the result consistent for the same pair
-
     const seed = (user1.id + user2.id).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
     const percentage = seed % 101;
@@ -43,7 +41,15 @@ module.exports = {
 
 
 
-    await interaction.reply({ embeds: [embed] });
+    if (interaction.replied || interaction.deferred) {
+
+      await interaction.editReply({ embeds: [embed] });
+
+    } else {
+
+      await interaction.reply({ embeds: [embed] });
+
+    }
 
   },
 
