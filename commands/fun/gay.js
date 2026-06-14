@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { getOrCreatePlayer } = require('../../database/client');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -18,6 +19,10 @@ module.exports = {
       .setTitle('🌈 Gay Meter')
       .setDescription(`${target.username} is **${percentage}%** gay!`);
 
-    await interaction.reply({ embeds: [embed] });
+    if (interaction.replied || interaction.deferred) {
+      await interaction.editReply({ embeds: [embed] });
+    } else {
+      await interaction.reply({ embeds: [embed] });
+    }
   },
 };
