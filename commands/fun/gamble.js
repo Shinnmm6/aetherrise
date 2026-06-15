@@ -14,28 +14,31 @@ module.exports = {
     const amount = interaction.options.getInteger('amount');
     const player = await getOrCreatePlayer(interaction.user.id, interaction.user.username);
 
-    if (amount <= 0) return interaction.reply({ content: "You must bet at least 1 gold!", ephemeral: true });
-    // IMPORTANT: Access the player.coins property (from the logs)
-    if (player.coins < BigInt(amount)) return interaction.reply({ content: "You don't have enough gold!", ephemeral: true });
+    if (amount <= 0) return interaction.reply({ content: "You must bet at least 1 gold!", ephemeral: true }).catch(() => {});
+    if (player.coins < BigInt(amount)) return interaction.reply({ content: "You don't have enough gold!", ephemeral: true }).catch(() => {});
 
     const isWin = Math.random() < 0.5;
+    let embed;
 
     if (isWin) {
       await prisma.player.update({
         where: { id: player.id },
-        data: { coins: { increment: amount } } // Changed balance to coins
+        data: { coins: { increment: amount } }
       });
-      await interaction.reply({ 
-        embeds: [new EmbedBuilder().setColor(0x00FF00).setTitle('💰 You Won!').setDescription(`The coin favored you! You gained **${amount} gold**.`)] 
-      });
+      embed = new EmbedBuilder().setColor(0x00FF00).setTitle('💰 You Won!').setDescription(`The coin favored you! You gained **${amount} gold**.`);
     } else {
       await prisma.player.update({
         where: { id: player.id },
-        data: { coins: { decrement: amount } } // Changed balance to coins
+        data: { coins: { decrement: amount } }
       });
-      await interaction.reply({ 
-        embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('💸 You Lost!').setDescription(`The coin was not in your favor. You lost **${amount} gold**.`)] 
-      });
+      embed = new EmbedBuilder().setColor(0xFF0000).setTitle('💸 You Lost!').setDescription(`The coin was not in your favor. You lost **${amount} gold**.`);
+    }
+
+    // Standardized response check
+    if (interaction.replied || interaction.deferred) {
+      await interaction.editReply({ embeds: [embed] });
+    } else {
+      await interaction.reply({ embeds: [embed] });
     }
   },
 };
