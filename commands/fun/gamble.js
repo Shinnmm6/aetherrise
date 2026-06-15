@@ -13,20 +13,19 @@ module.exports = {
   async execute(interaction) {
     const amount = interaction.options.getInteger('amount');
     
-    // Defer immediately to handle the "animation" time
-    await interaction.deferReply();
-
+    // REMOVED: interaction.deferReply() - handled by interactionCreate.js
+    
     const player = await getOrCreatePlayer(interaction.user.id, interaction.user.username);
 
     if (amount <= 0) return interaction.editReply({ content: "❌ You must bet at least 1 gold!" });
-    if (player.coins < BigInt(amount)) return interaction.editReply({ content: "❌ You don't have enough gold for that high-stakes bet!" });
+    if (player.coins < BigInt(amount)) return interaction.editReply({ content: "❌ You don't have enough gold!" });
 
-    // Show "Flipping" state
+    // Show "Flipping" state using editReply
     await interaction.editReply({ 
       embeds: [new EmbedBuilder().setTitle('🪙 Flipping the coin...').setDescription('The coin is spinning in the air...')] 
     });
 
-    // Short delay for "suspense"
+    // Short delay for suspense
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     const isWin = Math.random() < 0.5;
@@ -46,8 +45,7 @@ module.exports = {
         .addFields(
           { name: 'Won', value: `+${amount} gold`, inline: true },
           { name: 'New Balance', value: `${newBalance} gold`, inline: true }
-        )
-        .setFooter({ text: 'AetherRise Casino' });
+        );
       await interaction.editReply({ embeds: [embed] });
     } else {
       const updated = await prisma.player.update({
@@ -59,12 +57,11 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setColor(0xFF4500)
         .setTitle('💥 Defeat')
-        .setDescription(`**Tails.** The coin drops, and your gold vanishes into the void.`)
+        .setDescription(`**Tails.** The coin drops, and your gold vanishes.`)
         .addFields(
           { name: 'Lost', value: `-${amount} gold`, inline: true },
           { name: 'New Balance', value: `${newBalance} gold`, inline: true }
-        )
-        .setFooter({ text: 'AetherRise Casino' });
+        );
       await interaction.editReply({ embeds: [embed] });
     }
   },
