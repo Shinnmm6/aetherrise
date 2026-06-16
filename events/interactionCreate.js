@@ -1,7 +1,7 @@
 const { checkCooldown, setCooldown } = require('../database/redis');
 const { errorEmbed, cooldownEmbed } = require('../utils/helpers');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField } = require('discord.js');
-const { createTranscript } = require('discord-html-transcripts');
+const { createTranscript } = require('discord-html-transcripts/dist/index');
 const chalk = require('chalk');
 
 module.exports = {
@@ -30,10 +30,14 @@ module.exports = {
       
       if (interaction.customId === 'close_ticket') {
         await interaction.deferReply();
-        const attachment = await createTranscript(interaction.channel);
-        await interaction.user.send({ content: `Transcript for ticket: ${interaction.channel.name}`, files: [attachment] }).catch(() => {});
-        await interaction.editReply('🔒 Ticket closed and transcript sent to your DMs.');
-        await interaction.channel.permissionOverwrites.edit(interaction.user.id, { ViewChannel: false });
+        try {
+            const attachment = await createTranscript(interaction.channel);
+            await interaction.user.send({ content: `Transcript for ticket: ${interaction.channel.name}`, files: [attachment] }).catch(() => {});
+            await interaction.editReply('🔒 Ticket closed and transcript sent to your DMs.');
+            await interaction.channel.permissionOverwrites.edit(interaction.user.id, { ViewChannel: false });
+        } catch (err) {
+            await interaction.editReply('🔒 Ticket closed. (Could not generate transcript).');
+        }
         return;
       }
 
