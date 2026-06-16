@@ -19,6 +19,7 @@ module.exports = {
           ],
         });
         const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('transcript_ticket').setLabel('Transcript').setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId('close_ticket').setLabel('Close').setStyle(ButtonStyle.Danger),
           new ButtonBuilder().setCustomId('delete_ticket').setLabel('Delete').setStyle(ButtonStyle.Secondary)
         );
@@ -27,6 +28,15 @@ module.exports = {
         return;
       }
       
+      if (interaction.customId === 'transcript_ticket') {
+        await interaction.deferReply();
+        const messages = await interaction.channel.messages.fetch({ limit: 100 });
+        const transcript = messages.reverse().map(m => `${m.author.username}: ${m.content}`).join('\n');
+        const buffer = Buffer.from(transcript, 'utf8');
+        await interaction.editReply({ content: '📜 Here is the transcript of this ticket:', files: [{ attachment: buffer, name: 'transcript.txt' }] });
+        return;
+      }
+
       if (interaction.customId === 'close_ticket') {
         await interaction.reply('🔒 Ticket closed.');
         await interaction.channel.permissionOverwrites.edit(interaction.user.id, { ViewChannel: false });
