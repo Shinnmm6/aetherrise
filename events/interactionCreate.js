@@ -1,6 +1,7 @@
 const { checkCooldown, setCooldown } = require('../database/redis');
 const { errorEmbed, cooldownEmbed } = require('../utils/helpers');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField } = require('discord.js');
+const { createTranscript } = require('discord-html-transcripts');
 const chalk = require('chalk');
 
 module.exports = {
@@ -18,21 +19,31 @@ module.exports = {
             { id: interaction.client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
           ],
         });
-        const closeRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('close_ticket').setLabel('Close Ticket').setStyle(ButtonStyle.Danger)
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('close_ticket').setLabel('Close').setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId('delete_ticket').setLabel('Delete').setStyle(ButtonStyle.Secondary)
         );
         await interaction.editReply({ content: `✅ Ticket created: ${channel}` });
-        await channel.send({ content: `Hello ${interaction.user}! Please describe your issue.`, components: [closeRow] });
+        await channel.send({ content: `Hello ${interaction.user}! Please describe your issue.`, components: [row] });
         return;
       }
+      
       if (interaction.customId === 'close_ticket') {
-        await interaction.reply('🔒 Closing this ticket in 5 seconds...');
-        setTimeout(async () => { await interaction.channel.delete().catch(console.error); }, 5000);
+        await interaction.deferReply();
+        const attachment = await createTranscript(interaction.channel);
+        await interaction.user.send({ content: `Transcript for ticket: ${interaction.channel.name}`, files: [attachment] }).catch(() => {});
+        await interaction.editReply('🔒 Ticket closed and transcript sent to your DMs.');
+        await interaction.channel.permissionOverwrites.edit(interaction.user.id, { ViewChannel: false });
+        return;
+      }
+
+      if (interaction.customId === 'delete_ticket') {
+        await interaction.reply('🗑️ Deleting channel...');
+        await interaction.channel.delete().catch(console.error);
         return;
       }
     }
     
-    // ... keep your existing autocomplete and command logic below this ...
     if (interaction.isAutocomplete()) {
         const command = interaction.client.commands.get(interaction.commandName);
         if (!command || !command.autocomplete) return;
