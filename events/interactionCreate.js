@@ -6,6 +6,7 @@ const chalk = require('chalk');
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
+    // Handle Buttons
     if (interaction.isButton()) {
       if (interaction.customId === 'create_ticket') {
         await interaction.deferReply({ ephemeral: true });
@@ -33,7 +34,7 @@ module.exports = {
         const messages = await interaction.channel.messages.fetch({ limit: 100 });
         const transcript = messages.reverse().map(m => `${m.author.username}: ${m.content}`).join('\n');
         const buffer = Buffer.from(transcript, 'utf8');
-        await interaction.editReply({ content: '📜 Here is the transcript of this ticket:', files: [{ attachment: buffer, name: 'transcript.txt' }] });
+        await interaction.editReply({ content: '📜 Transcript generated.', files: [{ attachment: buffer, name: 'transcript.txt' }] });
         return;
       }
 
@@ -50,23 +51,32 @@ module.exports = {
       }
     }
     
+    // Handle Slash Commands
     if (interaction.isAutocomplete()) {
         const command = interaction.client.commands.get(interaction.commandName);
         if (!command || !command.autocomplete) return;
         try { await command.autocomplete(interaction); } catch (error) { console.error(chalk.red(`Error in autocomplete /${interaction.commandName}:`), error); }
         return;
     }
+
     if (!interaction.isChatInputCommand()) return;
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
+
+    // Defer immediately to prevent lag
+    if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply().catch(console.error);
+    }
+
+    // Auth check
     const restrictedCommands = ['admin', 'send_message'];
     const allowedOwners = ['1181235979286237264', '912889328814940201'];
     if (restrictedCommands.includes(interaction.commandName)) {
       if (!allowedOwners.includes(interaction.user.id)) {
-        return interaction.reply({ content: '❌ This command is restricted to the game developer only.', ephemeral: true });
+        return interaction.editReply({ content: '❌ This command is restricted to the game developer only.' });
       }
     }
-    if (!interaction.deferred && !interaction.replied) { await interaction.deferReply().catch(console.error); }
+
     try {
       if (command.cooldown) {
         const { onCooldown, remaining } = await checkCooldown(interaction.user.id, command.data.name);
