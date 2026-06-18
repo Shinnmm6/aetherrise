@@ -10,15 +10,18 @@ module.exports = {
     .addUserOption(opt => opt.setName('user').setDescription('View another player\'s profile')),
 
   async execute(interaction) {
-    // No need to reply here, interactionCreate.js already handled the deferral!
-    
+    const start = Date.now();
     const target = interaction.options.getUser('user') || interaction.user;
+    
+    // Fetch player and regen energy
     const player = await getOrCreatePlayer(target.id, target.username);
+    console.log(`[PERF] Player fetch for ${target.username} took ${Date.now() - start}ms`);
+    
     await regenEnergy(player);
+    console.log(`[PERF] Total profile command execution took ${Date.now() - start}ms`);
     
     const embed = profileEmbed(player, target);
     
-    // Change this line to editReply
     await interaction.editReply({ embeds: [embed] });
   },
 };
