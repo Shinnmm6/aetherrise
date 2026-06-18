@@ -13,7 +13,8 @@ module.exports = {
       .addStringOption(o => o.setName('reason').setDescription('Reason for kick')))
     .addSubcommand(sub => sub.setName('timeout').setDescription('Timeout a user')
       .addUserOption(o => o.setName('user').setDescription('User to timeout').setRequired(true))
-      .addIntegerOption(o => o.setName('duration').setDescription('Minutes'))
+      .addIntegerOption(o => o.setName('minutes').setDescription('Duration in minutes'))
+      .addIntegerOption(o => o.setName('days').setDescription('Duration in days'))
       .addStringOption(o => o.setName('reason').setDescription('Reason for timeout')))
     .addSubcommand(sub => sub.setName('warn').setDescription('Warn a user')
       .addUserOption(o => o.setName('user').setDescription('User to warn').setRequired(true))
@@ -45,9 +46,19 @@ module.exports = {
         await member.ban({ reason });
         return interaction.editReply({ content: `✅ Banned ${member.user.tag}.` });
       } else if (sub === 'timeout') {
-        const duration = interaction.options.getInteger('duration') || 5;
-        await member.timeout(duration * 60 * 1000, reason);
-        return interaction.editReply({ content: `✅ Timed out ${member.user.tag} for ${duration} minutes.` });
+        const mins = interaction.options.getInteger('minutes') || 0;
+        const days = interaction.options.getInteger('days') || 0;
+        const totalMs = (mins * 60 * 1000) + (days * 24 * 60 * 60 * 1000);
+
+        if (totalMs > 2419200000) return interaction.editReply({ content: '❌ Timeout cannot exceed 28 days.' });
+        
+        await member.timeout(totalMs > 0 ? totalMs : null, reason);
+        
+        const msg = totalMs > 0 
+            ? `✅ Timed out ${member.user.tag} for ${days} days and ${mins} minutes.` 
+            : `✅ Removed timeout from ${member.user.tag}.`;
+            
+        return interaction.editReply({ content: msg });
       }
     } catch (error) {
       console.error(error);
