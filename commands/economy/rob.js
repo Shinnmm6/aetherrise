@@ -18,27 +18,33 @@ module.exports = {
     const robber = await getOrCreatePlayer(author.id, author.username);
     const victim = await getOrCreatePlayer(target.id, target.username);
 
-    // BigInt must be converted to Number for math or handled as BigInt literals
     const robberCoins = Number(robber.coins);
     const victimCoins = Number(victim.coins);
+    const robberyFee = 1000;
 
-    if (robberCoins < 1000) return interaction.editReply("❌ You need at least 1,000 coins to rob someone.");
+    // Requirements check
+    if (robberCoins < robberyFee) return interaction.editReply(`❌ You need at least ${robberyFee} coins to attempt a robbery.`);
     if (robber.level < 5) return interaction.editReply("❌ You need to be at least level 5 to rob someone.");
     if (victimCoins < 500) return interaction.editReply("❌ This user doesn't have enough coins to be worth robbing.");
 
+    // Deduct the entry fee regardless of success
+    await prisma.player.update({
+      where: { discordId: author.id },
+      data: { coins: { decrement: BigInt(robberyFee) } }
+    });
+
+    // Success/Fail logic
     const success = Math.random() > 0.5;
     
     if (success) {
-      // Calculate 10% amount (ensure it's a BigInt for the DB update)
-      const amount = BigInt(Math.floor(victimCoins * 0.1));
+      const loot = BigInt(Math.floor(victimCoins * 0.1));
+      
+      await prisma.player.update({ where: { discordId: author.id }, data: { coins: { increment: loot } } });
+      await prisma.player.update({ where: { discordId: target.id }, data: { coins: { decrement: loot } } });
 
-      // Perform atomic database updates
-      await prisma.player.update({ where: { discordId: author.id }, data: { coins: { increment: amount } } });
-      await prisma.player.update({ where: { discordId: target.id }, data: { coins: { decrement: amount } } });
-
-      return interaction.editReply(`💰 Success! You robbed **${amount.toString()}** coins from ${target.username}.`);
+      return interaction.editReply(`💰 Success! You paid ${robberyFee} to attempt and robbed **${loot.toString()}** coins from ${target.username}.`);
     } else {
-      return interaction.editReply(`👮 You failed and got caught! ${target.username} saw you coming.`);
+      return interaction.editReply(`👮 You failed and got caught! You lost your ${robberyFee} fee and ${target.username} saw you coming.`);
     }
   },
 };
