@@ -18,24 +18,25 @@ module.exports = {
     const robber = await getOrCreatePlayer(author.id, author.username);
     const victim = await getOrCreatePlayer(target.id, target.username);
 
-    // Ensure balances are treated as numbers
-    const robberBal = Number(robber.balance || 0);
-    const victimBal = Number(victim.balance || 0);
+    // BigInt must be converted to Number for math or handled as BigInt literals
+    const robberCoins = Number(robber.coins);
+    const victimCoins = Number(victim.coins);
 
-    if (robberBal < 1000) return interaction.editReply("❌ You need at least 1,000 balance to rob someone.");
+    if (robberCoins < 1000) return interaction.editReply("❌ You need at least 1,000 coins to rob someone.");
     if (robber.level < 5) return interaction.editReply("❌ You need to be at least level 5 to rob someone.");
-    if (victimBal < 500) return interaction.editReply("❌ This user doesn't have enough money to be worth robbing.");
+    if (victimCoins < 500) return interaction.editReply("❌ This user doesn't have enough coins to be worth robbing.");
 
     const success = Math.random() > 0.5;
     
     if (success) {
-      const amount = Math.floor(victimBal * 0.1);
+      // Calculate 10% amount (ensure it's a BigInt for the DB update)
+      const amount = BigInt(Math.floor(victimCoins * 0.1));
 
-      // Perform the database update
-      await prisma.player.update({ where: { discordId: author.id }, data: { balance: { increment: amount } } });
-      await prisma.player.update({ where: { discordId: target.id }, data: { balance: { decrement: amount } } });
+      // Perform atomic database updates
+      await prisma.player.update({ where: { discordId: author.id }, data: { coins: { increment: amount } } });
+      await prisma.player.update({ where: { discordId: target.id }, data: { coins: { decrement: amount } } });
 
-      return interaction.editReply(`💰 Success! You robbed **${amount}** from ${target.username}.`);
+      return interaction.editReply(`💰 Success! You robbed **${amount.toString()}** coins from ${target.username}.`);
     } else {
       return interaction.editReply(`👮 You failed and got caught! ${target.username} saw you coming.`);
     }
