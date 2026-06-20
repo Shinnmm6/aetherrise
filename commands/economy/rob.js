@@ -10,12 +10,8 @@ module.exports = {
   cooldown: 35,
 
   async execute(interaction) {
-    const targetMember = interaction.options.getMember('user');
     const target = interaction.options.getUser('user');
     const author = interaction.user;
-
-    // Use display name for the text, and <@id> for the mention
-    const targetDisplayName = targetMember ? targetMember.displayName : target.username;
     const targetMention = `<@${target.id}>`;
 
     if (target.id === author.id) return interaction.editReply("❌ You can't rob yourself!");
@@ -44,14 +40,14 @@ module.exports = {
       await prisma.player.update({ where: { discordId: author.id }, data: { coins: { increment: loot } } });
       await prisma.player.update({ where: { discordId: target.id }, data: { coins: { decrement: loot } } });
 
-      return interaction.editReply(`💰 Success! You paid ${robberyFee} to attempt and successfully robbed **${loot.toString()}** coins from ${targetDisplayName} (${targetMention}).`);
+      return interaction.editReply(`💰 Success! You paid ${robberyFee} to attempt and successfully robbed **${loot.toString()}** coins from ${targetMention}.`);
     } else {
       await prisma.player.update({
         where: { discordId: target.id },
         data: { coins: { increment: BigInt(robberyFee) } }
       });
 
-      return interaction.editReply(`👮 You failed! You were caught and had to pay ${robberyFee} coins in compensation to ${targetDisplayName} (${targetMention}).`);
+      return interaction.editReply(`👮 You failed! You were caught and had to pay ${robberyFee} coins in compensation to ${targetMention}.`);
     }
   },
 };
