@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getOrCreatePlayer, prisma } = require('../../database/client');
 
 module.exports = {
@@ -25,7 +25,7 @@ module.exports = {
 
     if (robberCoins < robberyFee) return interaction.editReply(`❌ You need at least ${robberyFee} coins to attempt a robbery.`);
     if (robber.level < 5) return interaction.editReply("❌ You need to be at least level 5 to rob someone.");
-    if (victimCoins < 500) return interaction.editReply("❌ This user doesn't have enough coins to be worth robbing.");
+    if (victimCoins < 500) return interaction.editReply("❌ ${targetMention} doesn't have enough coins to be worth robbing.");
 
     await prisma.player.update({
       where: { discordId: author.id },
@@ -33,21 +33,28 @@ module.exports = {
     });
 
     const success = Math.random() > 0.5;
-    
+    const embed = new EmbedBuilder();
+
     if (success) {
       const loot = BigInt(Math.floor(victimCoins * 0.1));
       
       await prisma.player.update({ where: { discordId: author.id }, data: { coins: { increment: loot } } });
       await prisma.player.update({ where: { discordId: target.id }, data: { coins: { decrement: loot } } });
 
-      return interaction.editReply(`💰 Success! You paid ${robberyFee} to attempt and successfully robbed **${loot.toString()}** coins from ${targetMention}.`);
+      embed.setTitle("💰 Robbery Successful")
+           .setColor(0x00FF00)
+           .setDescription(`You successfully robbed **${loot.toString()}** coins from ${targetMention}.\n*Fee paid: ${robberyFee}*`);
     } else {
       await prisma.player.update({
         where: { discordId: target.id },
         data: { coins: { increment: BigInt(robberyFee) } }
       });
 
-      return interaction.editReply(`👮 You failed! You were caught and had to pay ${robberyFee} coins in compensation to ${targetMention}.`);
+      embed.setTitle("👮 Robbery Failed")
+           .setColor(0xFF0000)
+           .setDescription(`You were caught! You paid **${robberyFee}** coins in compensation to ${targetMention}.`);
     }
+
+    return interaction.editReply({ embeds: [embed] });
   },
 };
