@@ -35,10 +35,10 @@ async function main() {
   await loadCommands(client);
   await loadEvents(client);
 
-  // Initialize the Ghost wandering timer (Every 5 minutes)
+  // TESTING: Set to 5 seconds (5 * 1000)
   setInterval(() => {
     sendGhostMessage(client);
-  }, 5 * 60 * 1000);
+  }, 5 * 1000);
 
   client.login(process.env.DISCORD_TOKEN);
 }
