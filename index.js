@@ -23,7 +23,7 @@ client.activeBattles = new Map();
 client.activeDungeons = new Map();
 client.globalBoss = null;
 
-// Handle random replies
+// Handle random replies (responder.js)
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
     await handleRandomReply(message);
@@ -42,10 +42,10 @@ async function main() {
   await loadCommands(client);
   await loadEvents(client);
 
-  // Ghost wandering timer (Every 8 minutes)
+  // Ghost wandering timer (Every 60 minutes)
   setInterval(() => {
     sendGhostMessage(client);
-  }, 8 * 60 * 1000);
+  }, 60 * 60 * 1000);
 
   client.login(process.env.DISCORD_TOKEN);
 }
