@@ -4,6 +4,7 @@ const { loadCommands } = require('./handlers/commandHandler');
 const { loadEvents } = require('./handlers/eventHandler');
 const { initDatabase } = require('./database/client');
 const { initRedis } = require('./database/redis');
+const { sendGhostMessage } = require('./utils/ghost');
 const chalk = require('chalk');
 
 const client = new Client({
@@ -33,6 +34,11 @@ async function main() {
   await initRedis();
   await loadCommands(client);
   await loadEvents(client);
+
+  // Initialize the Ghost wandering timer (Every 5 minutes)
+  setInterval(() => {
+    sendGhostMessage(client);
+  }, 5 * 60 * 1000);
 
   client.login(process.env.DISCORD_TOKEN);
 }
