@@ -1,7 +1,7 @@
 const { Client } = require('discord.js');
 
 const CHANNEL_IDS = ['1466400064913150158'];
-q
+
 async function sendGhostMessage(client) {
     const channelId = CHANNEL_IDS[Math.floor(Math.random() * CHANNEL_IDS.length)];
     const channel = client.channels.cache.get(channelId);
@@ -28,4 +28,4 @@ async function sendGhostMessage(client) {
     });
 }
 
-module.exports = { sendGhostMessage }
+module.exports = { sendGhostMessage };
