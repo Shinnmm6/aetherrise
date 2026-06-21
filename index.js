@@ -26,6 +26,12 @@ client.globalBoss = null;
 // Handle random replies (responder.js)
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
+    
+    // Auto-reply for "xeno"
+    if (message.content.toLowerCase().includes('xeno')) {
+        await message.reply("Xeno is sucks and for dumb users like you");
+    }
+
     await handleRandomReply(message);
 });
 
