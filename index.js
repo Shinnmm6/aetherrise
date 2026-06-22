@@ -32,6 +32,11 @@ client.on(Events.MessageCreate, async (message) => {
         await message.reply("Xeno is sucks and for dumb users like you");
     }
 
+    // Auto-reply for "karunosob"
+    if (message.content.toLowerCase().includes('karunosob')) {
+        await message.reply("karunosob is femboy i sense it 100%");
+    }
+
     await handleRandomReply(message);
 });
 
