@@ -9,6 +9,9 @@ module.exports = {
             .setDescription('The user to get info about')),
     
     async execute(interaction) {
+        // Defer the reply immediately to let Discord know the bot is working
+        await interaction.deferReply();
+
         const member = interaction.options.getMember('user') || interaction.member;
         const user = await member.user.fetch(true);
 
@@ -33,6 +36,7 @@ module.exports = {
             )
             .setFooter({ text: `Requested by ${interaction.user.username}` });
 
-        await interaction.reply({ embeds: [embed] });
+        // Use editReply to send the final result after deferring
+        await interaction.editReply({ embeds: [embed] });
     },
 };
