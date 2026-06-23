@@ -28,7 +28,7 @@ client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
     
     // --- Message Forwarding Logic ---
-    const SOURCE_CHANNEL_ID = '1343958299132821514'; // Sender
+    const SOURCE_CHANNEL_ID = '1466400064913150158'; // Updated Sender
     const DESTINATION_CHANNEL_ID = '1516293358635716610'; // Receiver
 
     if (message.channel.id === SOURCE_CHANNEL_ID) {
