@@ -1,16 +1,19 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
-    name: 'userinfo',
-    description: 'See info about a user and mutual servers',
-    async execute(message, args) {
-        // Fetch the member, or the author
-        const member = message.mentions.members.first() || message.member;
-        const user = await member.user.fetch(true); // Fetch full user data
+    data: new SlashCommandBuilder()
+        .setName('userinfo')
+        .setDescription('See info about a user and mutual servers')
+        .addUserOption(option => 
+            option.setName('user')
+            .setDescription('The user to get info about')),
+    
+    async execute(interaction) {
+        const member = interaction.options.getMember('user') || interaction.member;
+        const user = await member.user.fetch(true);
 
-        // Get mutual guilds (servers where the bot and the user both are)
         const mutualGuilds = [];
-        message.client.guilds.cache.forEach(guild => {
+        interaction.client.guilds.cache.forEach(guild => {
             if (guild.members.cache.has(user.id)) {
                 mutualGuilds.push(guild.name);
             }
@@ -28,8 +31,8 @@ module.exports = {
                 { name: 'Roles', value: member.roles.cache.map(r => r.name).join(', ').replace('@everyone, ', '') || 'None' },
                 { name: 'Mutual Servers', value: mutualGuilds.join(', ') || 'No mutual servers found' }
             )
-            .setFooter({ text: `Requested by ${message.author.username}` });
+            .setFooter({ text: `Requested by ${interaction.user.username}` });
 
-        message.reply({ embeds: [embed] });
+        await interaction.reply({ embeds: [embed] });
     },
 };
