@@ -9,8 +9,6 @@ module.exports = {
             .setDescription('The user to get info about')),
     
     async execute(interaction) {
-        // No deferReply here because interactionCreate.js already does it!
-
         const member = interaction.options.getMember('user') || interaction.member;
         const user = await member.user.fetch(true);
 
@@ -22,9 +20,11 @@ module.exports = {
         });
 
         const embed = new EmbedBuilder()
-            .setTitle(`User Info: ${user.username}`)
+            // This shows the Display Name (the one with the color)
+            .setTitle(`User Info: ${member.displayName}`)
             .setThumbnail(user.displayAvatarURL())
-            .setColor(member.displayHexColor || '#2b2d31')
+            // This pulls the actual color of their highest role
+            .setColor(member.displayHexColor)
             .addFields(
                 { name: 'Username', value: user.username, inline: true },
                 { name: 'ID', value: user.id, inline: true },
@@ -35,7 +35,6 @@ module.exports = {
             )
             .setFooter({ text: `Requested by ${interaction.user.username}` });
 
-        // Since it's already deferred by the main handler, we just edit the reply
         await interaction.editReply({ embeds: [embed] });
     },
 };
