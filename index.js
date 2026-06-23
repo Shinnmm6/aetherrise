@@ -23,16 +23,30 @@ client.activeBattles = new Map();
 client.activeDungeons = new Map();
 client.globalBoss = null;
 
-// Handle random replies (responder.js)
+// Handle random replies and forwarding
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
     
-    // Auto-reply for "xeno"
+    // --- Message Forwarding Logic ---
+    const SOURCE_CHANNEL_ID = '1343958299132821514'; // Sender
+    const DESTINATION_CHANNEL_ID = '1516293358635716610'; // Receiver
+
+    if (message.channel.id === SOURCE_CHANNEL_ID) {
+        const destinationChannel = message.client.channels.cache.get(DESTINATION_CHANNEL_ID);
+        if (destinationChannel) {
+            const content = `**${message.author.username}**: ${message.content}`;
+            await destinationChannel.send({ 
+                content: content, 
+                files: message.attachments.map(a => a.url) 
+            }).catch(console.error);
+        }
+    }
+
+    // --- Existing Auto-replies ---
     if (message.content.toLowerCase().includes('xeno')) {
         await message.reply("Xeno is sucks and for dumb users like you");
     }
 
-    // Auto-reply for "karunosob"
     if (message.content.toLowerCase().includes('karunosob')) {
         await message.reply("karunosob is femboy i sense it 100%");
     }
