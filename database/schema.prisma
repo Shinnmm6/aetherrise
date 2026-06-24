@@ -13,7 +13,7 @@ model Player {
   username        String
   coins           BigInt   @default(0)
   bank            BigInt   @default(0)
-  gems            Int      @default(0)         // prestige currency
+  gems            Int      @default(0)
   xp              BigInt   @default(0)
   level           Int      @default(1)
   prestige        Int      @default(0)
@@ -38,19 +38,17 @@ model Player {
   badges          String[] @default([])
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  inventory     InventoryItem[]
-  equipment     Equipment?
-  pets          PlayerPet[]
-  activePet     String?
-  quests        PlayerQuest[]
-  achievements  PlayerAchievement[]
-  guild         GuildMember?
-  marketListings MarketListing[]
-  tradesSent    Trade[]    @relation("TradesSent")
-  tradesReceived Trade[]   @relation("TradesReceived")
-  battlePass    BattlePass?
-
+  inventory       InventoryItem[]
+  equipment       Equipment?
+  pets            PlayerPet[]
+  activePet       String?
+  quests          PlayerQuest[]
+  achievements    PlayerAchievement[]
+  guild           GuildMember?
+  marketListings  MarketListing[]
+  tradesSent      Trade[]    @relation("TradesSent")
+  tradesReceived  Trade[]   @relation("TradesReceived")
+  battlePass      BattlePass?
   @@map("players")
 }
 
@@ -62,9 +60,7 @@ model InventoryItem {
   durability Int?
   enchants  String[] @default([])
   createdAt DateTime @default(now())
-
   player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
   @@unique([playerId, itemId])
   @@map("inventory_items")
 }
@@ -78,9 +74,7 @@ model Equipment {
   boots     String?
   relic     String?
   accessory String?
-
   player    Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
   @@map("equipment")
 }
 
@@ -95,9 +89,7 @@ model PlayerPet {
   isActive   Boolean  @default(false)
   evolution  Int      @default(0)
   obtainedAt DateTime @default(now())
-
   player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
   @@map("player_pets")
 }
 
@@ -110,9 +102,7 @@ model PlayerQuest {
   claimed    Boolean  @default(false)
   assignedAt DateTime @default(now())
   completedAt DateTime?
-
   player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
   @@map("player_quests")
 }
 
@@ -121,9 +111,7 @@ model PlayerAchievement {
   playerId    String
   achievementId String
   unlockedAt  DateTime @default(now())
-
   player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
   @@unique([playerId, achievementId])
   @@map("player_achievements")
 }
@@ -139,9 +127,7 @@ model Guild {
   banner      String?
   perks       String[] @default([])
   createdAt   DateTime @default(now())
-
   members     GuildMember[]
-
   @@map("guilds")
 }
 
@@ -149,12 +135,10 @@ model GuildMember {
   id       String @id @default(cuid())
   guildId  String
   playerId String @unique
-  role     String @default("member") // owner, officer, member
+  role     String @default("member")
   joinedAt DateTime @default(now())
-
   guild    Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
   player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
   @@map("guild_members")
 }
 
@@ -167,9 +151,7 @@ model MarketListing {
   listed    DateTime @default(now())
   expires   DateTime
   sold      Boolean  @default(false)
-
   seller    Player   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-
   @@map("market_listings")
 }
 
@@ -181,13 +163,11 @@ model Trade {
   receiverItems Json
   senderCoins  BigInt @default(0)
   receiverCoins BigInt @default(0)
-  status     String   @default("pending") // pending, accepted, declined, expired
+  status     String   @default("pending")
   createdAt  DateTime @default(now())
   expiresAt  DateTime
-
   sender     Player   @relation("TradesSent", fields: [senderId], references: [id])
   receiver   Player   @relation("TradesReceived", fields: [receiverId], references: [id])
-
   @@map("trades")
 }
 
@@ -201,7 +181,6 @@ model BossEvent {
   spawnedAt   DateTime @default(now())
   defeatedAt  DateTime?
   participants Json    @default("[]")
-
   @@map("boss_events")
 }
 
@@ -213,20 +192,24 @@ model BattlePass {
   xp        Int    @default(0)
   isPremium Boolean @default(false)
   claimed   Int[]  @default([])
-
   player    Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
   @@map("battle_pass")
 }
 
 model SeasonalEvent {
   id        String   @id @default(cuid())
   name      String
-  type      String   // halloween, christmas, sakura, summer
+  type      String
   active    Boolean  @default(true)
   startDate DateTime
   endDate   DateTime
   data      Json
-
   @@map("seasonal_events")
+}
+
+model Settings {
+  id        String @id @default(cuid())
+  guildId   String @unique
+  prefix    String @default("!")
+  @@map("settings")
 }
