@@ -23,7 +23,6 @@ client.activeBattles = new Map();
 client.activeDungeons = new Map();
 client.globalBoss = null;
 
-// Updated for Prisma
 async function getPrefix(guildId) {
     try {
         const settings = await prisma.settings.findUnique({ where: { guildId } });
@@ -36,7 +35,6 @@ async function getPrefix(guildId) {
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
     
-    // --- Message Forwarding ---
     const SOURCE_CHANNEL_ID = '1466400064913150158';
     const DESTINATION_CHANNEL_ID = '1516293358635716610';
 
@@ -51,13 +49,11 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
-    // --- Prefix Logic ---
     const prefix = await getPrefix(message.guild.id);
     if (message.content.startsWith(prefix)) {
-        // Logic for prefix commands
+        // Prefix command logic
     }
 
-    // --- Auto-replies ---
     if (message.content.toLowerCase().includes('xeno')) {
         await message.reply("Xeno is sucks and for dumb users like you");
     }

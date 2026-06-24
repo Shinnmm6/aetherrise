@@ -14,8 +14,6 @@ module.exports = {
     async execute(interaction) {
         const newPrefix = interaction.options.getString('new');
         
-        await interaction.deferReply({ ephemeral: true });
-
         try {
             await prisma.settings.upsert({
                 where: { guildId: interaction.guild.id },
