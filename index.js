@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
 const { loadCommands } = require('./handlers/commandHandler');
 const { loadEvents } = require('./handlers/eventHandler');
-const { initDatabase } = require('./database/client');
+const { initDatabase, getDb } = require('./database/client');
 const { initRedis } = require('./database/redis');
 const { sendGhostMessage } = require('./utils/ghost');
 const { handleRandomReply } = require('./utils/responder');
@@ -23,13 +23,25 @@ client.activeBattles = new Map();
 client.activeDungeons = new Map();
 client.globalBoss = null;
 
-// Handle random replies and forwarding
+// Helper to get prefix from database
+async function getPrefix(guildId) {
+    try {
+        const db = await getDb();
+        const settings = await db.collection('settings').findOne({ guildId });
+        return settings?.prefix || '!'; 
+    } catch (error) {
+        console.error("Error fetching prefix:", error);
+        return '!';
+    }
+}
+
+// Handle random replies, forwarding, and prefix checks
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
     
     // --- Message Forwarding Logic ---
-    const SOURCE_CHANNEL_ID = '1466400064913150158'; // Updated Sender
-    const DESTINATION_CHANNEL_ID = '1516293358635716610'; // Receiver
+    const SOURCE_CHANNEL_ID = '1466400064913150158'; 
+    const DESTINATION_CHANNEL_ID = '1516293358635716610'; 
 
     if (message.channel.id === SOURCE_CHANNEL_ID) {
         const destinationChannel = message.client.channels.cache.get(DESTINATION_CHANNEL_ID);
@@ -40,6 +52,12 @@ client.on(Events.MessageCreate, async (message) => {
                 files: message.attachments.map(a => a.url) 
             }).catch(console.error);
         }
+    }
+
+    // --- Prefix Logic ---
+    const prefix = await getPrefix(message.guild.id);
+    if (message.content.startsWith(prefix)) {
+        // You can add your legacy prefix command handling logic here
     }
 
     // --- Existing Auto-replies ---
