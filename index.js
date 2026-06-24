@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
 const { loadCommands } = require('./handlers/commandHandler');
 const { loadEvents } = require('./handlers/eventHandler');
-const { initDatabase, getDb } = require('./database/client');
+const { initDatabase, prisma } = require('./database/client');
 const { initRedis } = require('./database/redis');
 const { sendGhostMessage } = require('./utils/ghost');
 const { handleRandomReply } = require('./utils/responder');
@@ -23,25 +23,22 @@ client.activeBattles = new Map();
 client.activeDungeons = new Map();
 client.globalBoss = null;
 
-// Helper to get prefix from database
+// Updated for Prisma
 async function getPrefix(guildId) {
     try {
-        const db = await getDb();
-        const settings = await db.collection('settings').findOne({ guildId });
-        return settings?.prefix || '!'; 
+        const settings = await prisma.settings.findUnique({ where: { guildId } });
+        return settings?.prefix || '!';
     } catch (error) {
-        console.error("Error fetching prefix:", error);
         return '!';
     }
 }
 
-// Handle random replies, forwarding, and prefix checks
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
     
-    // --- Message Forwarding Logic ---
-    const SOURCE_CHANNEL_ID = '1466400064913150158'; 
-    const DESTINATION_CHANNEL_ID = '1516293358635716610'; 
+    // --- Message Forwarding ---
+    const SOURCE_CHANNEL_ID = '1466400064913150158';
+    const DESTINATION_CHANNEL_ID = '1516293358635716610';
 
     if (message.channel.id === SOURCE_CHANNEL_ID) {
         const destinationChannel = message.client.channels.cache.get(DESTINATION_CHANNEL_ID);
@@ -57,10 +54,10 @@ client.on(Events.MessageCreate, async (message) => {
     // --- Prefix Logic ---
     const prefix = await getPrefix(message.guild.id);
     if (message.content.startsWith(prefix)) {
-        // You can add your legacy prefix command handling logic here
+        // Logic for prefix commands
     }
 
-    // --- Existing Auto-replies ---
+    // --- Auto-replies ---
     if (message.content.toLowerCase().includes('xeno')) {
         await message.reply("Xeno is sucks and for dumb users like you");
     }
@@ -85,7 +82,6 @@ async function main() {
   await loadCommands(client);
   await loadEvents(client);
 
-  // Ghost wandering timer (Every 60 minutes)
   setInterval(() => {
     sendGhostMessage(client);
   }, 60 * 60 * 1000);

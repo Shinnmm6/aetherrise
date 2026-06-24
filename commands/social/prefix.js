@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { getDb } = require('../../database/client');
+const { prisma } = require('../../database/client');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -14,19 +14,19 @@ module.exports = {
     async execute(interaction) {
         const newPrefix = interaction.options.getString('new');
         
-        try {
-            const db = await getDb();
-            // Saves the prefix to a 'settings' collection in your database
-            await db.collection('settings').updateOne(
-                { guildId: interaction.guild.id },
-                { $set: { prefix: newPrefix } },
-                { upsert: true }
-            );
+        await interaction.deferReply({ ephemeral: true });
 
-            await interaction.reply(`Success! The new prefix for this server is: \`${newPrefix}\``);
+        try {
+            await prisma.settings.upsert({
+                where: { guildId: interaction.guild.id },
+                update: { prefix: newPrefix },
+                create: { guildId: interaction.guild.id, prefix: newPrefix },
+            });
+
+            await interaction.editReply(`Success! The new prefix for this server is: \`${newPrefix}\``);
         } catch (error) {
             console.error(error);
-            await interaction.reply({ content: 'There was an error updating the prefix.', ephemeral: true });
+            await interaction.editReply({ content: 'There was an error updating the prefix.' });
         }
     }
 };
