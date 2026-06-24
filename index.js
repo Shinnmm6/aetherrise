@@ -25,15 +25,15 @@ client.globalBoss = null;
 
 async function getPrefix(guildId) {
     try {
-        const settings = await prisma.settings.findUnique({ where: { guildId } });
-        return settings?.prefix || '!';
+        const settings = await prisma.$queryRaw`SELECT prefix FROM "settings" WHERE "guildId" = ${guildId} LIMIT 1`;
+        return (settings && settings.length > 0) ? settings[0].prefix : '!';
     } catch (error) {
         return '!';
     }
 }
 
 client.on(Events.MessageCreate, async (message) => {
-    if (message.author.bot) return;
+    if (message.author.bot || !message.guild) return;
     
     const SOURCE_CHANNEL_ID = '1466400064913150158';
     const DESTINATION_CHANNEL_ID = '1516293358635716610';
