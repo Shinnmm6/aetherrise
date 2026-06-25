@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -11,10 +11,15 @@ module.exports = {
         
         const memberCount = interaction.guild.memberCount;
         
-        // Since the interaction is already deferred by your handler, 
-        // you MUST use editReply, not reply.
+        const embed = new EmbedBuilder()
+            .setColor(0x0099FF)
+            .setTitle('Server Member Count')
+            .setDescription(`There are currently **${memberCount}** members in this server!`)
+            .setTimestamp();
+
+        // Using editReply with embeds to avoid the InteractionAlreadyReplied error
         await interaction.editReply({
-            content: `There are currently **${memberCount}** members in this server!`
+            embeds: [embed]
         });
     },
 };
