@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { set } = require('../../database/redis'); // Assuming your redis helper handles set
+// Import the entire object, or fix the import path/syntax based on your redis.js
+const redis = require('../../database/redis'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -13,8 +14,9 @@ module.exports = {
         const reason = interaction.options.getString('reason') || '没说原因 (No reason provided)';
         const userId = interaction.user.id;
 
-        // Save to Redis: afk:userid -> reason
-        await set(`afk:${userId}`, reason);
+        // Use the imported object to access the set method
+        // If your redis.js uses 'client.set', adjust accordingly
+        await redis.set(`afk:${userId}`, reason);
 
         const embed = new EmbedBuilder()
             .setColor(0x00FF00)
