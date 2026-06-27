@@ -1,27 +1,24 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-// Import the entire object, or fix the import path/syntax based on your redis.js
-const redis = require('../../database/redis'); 
+const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('afk')
-        .setDescription('设置你的离开状态 (Set your AFK status)')
-        .addStringOption(option => 
-            option.setName('reason')
-                .setDescription('离开原因 (Reason for AFK)')
-                .setRequired(false)),
+        .setDescription('设置你的离开状态 (Set your AFK status)'),
     async execute(interaction) {
-        const reason = interaction.options.getString('reason') || '没说原因 (No reason provided)';
-        const userId = interaction.user.id;
+        const originalName = interaction.member.displayName;
+        const newNickname = `AFK: ${originalName}`;
 
-        // Use the imported object to access the set method
-        // If your redis.js uses 'client.set', adjust accordingly
-        await redis.set(`afk:${userId}`, reason);
-
-        const embed = new EmbedBuilder()
-            .setColor(0x00FF00)
-            .setDescription(`✅ 你现在已进入离开状态 (AFK): **${reason}**`);
-
-        await interaction.editReply({ embeds: [embed] });
+        try {
+            await interaction.member.setNickname(newNickname);
+            
+            await interaction.editReply({ 
+                content: `✅ 你的昵称已更改为: **${newNickname}**` 
+            });
+        } catch (error) {
+            console.error(error);
+            await interaction.editReply({ 
+                content: '❌ 无法更改你的昵称。请确保机器人的权限高于你的角色，且昵称长度不超过 32 个字符。' 
+            });
+        }
     },
 };
