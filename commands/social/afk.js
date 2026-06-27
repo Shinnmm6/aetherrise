@@ -1,24 +1,32 @@
 const { SlashCommandBuilder } = require('discord.js');
+const redis = require('../../database/redis');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('afk')
-        .setDescription('设置你的离开状态 (Set your AFK status)'),
+        .setDescription('设置离开状态并查看已离开时间'),
     async execute(interaction) {
-        const member = interaction.member;
-        
-        try {
-            // Attempt to change the nickname
-            await member.setNickname(`AFK: ${member.displayName}`);
-            await interaction.editReply({ 
-                content: `✅ 你的昵称已更改为: **AFK: ${member.displayName}**` 
-            });
-        } catch (error) {
-            // Fallback for Server Owner or Permission issues
-            console.error('Nickname change failed (likely owner or perms):', error);
-            await interaction.editReply({ 
-                content: `💤 **${member.displayName}** 现在处于离开状态 (AFK)。` 
+        const userId = interaction.user.id;
+        const now = Date.now();
+
+        const existingTime = await redis.get(`afk:${userId}:time`);
+
+        if (existingTime) {
+            const timePassed = Date.now() - parseInt(existingTime);
+            const hours = Math.floor(timePassed / (1000 * 60 * 60));
+            const minutes = Math.floor((timePassed % (1000 * 60 * 60)) / (1000 * 60));
+            
+            return await interaction.reply({ 
+                content: `💤 你已经处于离开状态大约 **${hours} 小时 ${minutes} 分钟** 了。` 
             });
         }
+
+        await redis.set(`afk:${userId}:time`, now.toString());
+
+        try {
+            await interaction.member.setNickname(`AFK: ${interaction.member.displayName}`);
+        } catch (e) {}
+
+        await interaction.reply('✅ 你现在已进入 AFK 状态。');
     },
 };
