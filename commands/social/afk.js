@@ -1,17 +1,17 @@
 const { SlashCommandBuilder } = require('discord.js');
-const redis = require('../../database/redis'); // Import the whole object
+const { getRedis } = require('../../database/redis'); // Import the getter function
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('afk')
         .setDescription('设置离开状态并查看已离开时间'),
     async execute(interaction) {
+        const redis = getRedis(); // Retrieve the client instance
         const userId = interaction.user.id;
         const now = Date.now();
 
-        // Check if redis has a method called 'get', otherwise try 'client.get'
-        // We use redis.get here, assuming the file exports the client directly
-        const existingTime = await redis.get(`afk:${userId}:time`).catch(() => null);
+        // Use the client instance to get data
+        const existingTime = await redis.get(`afk:${userId}:time`);
 
         if (existingTime) {
             const timePassed = Date.now() - parseInt(existingTime);
@@ -23,12 +23,14 @@ module.exports = {
             });
         }
 
-        // Use redis.set
+        // Use the client instance to set data
         await redis.set(`afk:${userId}:time`, now.toString());
 
         try {
             await interaction.member.setNickname(`AFK: ${interaction.member.displayName}`);
-        } catch (e) {}
+        } catch (e) {
+            // Owner/Perms error handled silently
+        }
 
         await interaction.reply('✅ 你现在已进入 AFK 状态。');
     },
