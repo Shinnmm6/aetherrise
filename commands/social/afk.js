@@ -5,23 +5,20 @@ module.exports = {
         .setName('afk')
         .setDescription('设置你的离开状态 (Set your AFK status)'),
     async execute(interaction) {
+        const member = interaction.member;
+        
         try {
-            const member = interaction.member;
-            const originalName = member.displayName;
-            const newNickname = `AFK: ${originalName}`;
-
-            await member.setNickname(newNickname);
-            await interaction.editReply({ content: `✅ 昵称已更改为: **${newNickname}**` });
+            // Attempt to change the nickname
+            await member.setNickname(`AFK: ${member.displayName}`);
+            await interaction.editReply({ 
+                content: `✅ 你的昵称已更改为: **AFK: ${member.displayName}**` 
+            });
         } catch (error) {
-            console.error(error);
-            // Specifically tell you if it's a permission issue
-            if (error.code === 50013) {
-                await interaction.editReply({ 
-                    content: '❌ 错误: 机器人没有权限修改你的昵称 (权限不足或角色层级过低)。' 
-                });
-            } else {
-                await interaction.editReply({ content: '❌ 更改昵称时出错。' });
-            }
+            // Fallback for Server Owner or Permission issues
+            console.error('Nickname change failed (likely owner or perms):', error);
+            await interaction.editReply({ 
+                content: `💤 **${member.displayName}** 现在处于离开状态 (AFK)。` 
+            });
         }
     },
 };
