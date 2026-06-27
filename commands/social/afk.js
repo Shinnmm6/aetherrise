@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
-const redis = require('../../database/redis');
+// Change this line to import the specific functions used in your other commands
+const { get, set } = require('../../database/redis'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,7 +10,8 @@ module.exports = {
         const userId = interaction.user.id;
         const now = Date.now();
 
-        const existingTime = await redis.get(`afk:${userId}:time`);
+        // Use get/set directly as imported functions
+        const existingTime = await get(`afk:${userId}:time`);
 
         if (existingTime) {
             const timePassed = Date.now() - parseInt(existingTime);
@@ -21,11 +23,13 @@ module.exports = {
             });
         }
 
-        await redis.set(`afk:${userId}:time`, now.toString());
+        await set(`afk:${userId}:time`, now.toString());
 
         try {
             await interaction.member.setNickname(`AFK: ${interaction.member.displayName}`);
-        } catch (e) {}
+        } catch (e) {
+            console.error("Nickname change skipped (Owner/Perms)");
+        }
 
         await interaction.reply('✅ 你现在已进入 AFK 状态。');
     },
