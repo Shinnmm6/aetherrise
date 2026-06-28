@@ -32,13 +32,7 @@ module.exports = {
     .addSubcommand(sub =>
       sub.setName('slots')
         .setDescription('Spin the slot machine 🎰')
-        .addIntegerOption(opt => opt.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(10)))
-    .addSubcommand(sub =>
-      sub.setName('coinflip')
-        .setDescription('50/50 coin flip 🪙')
-        .addIntegerOption(opt => opt.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(10))
-        .addStringOption(opt => opt.setName('side').setDescription('Heads or Tails').setRequired(true)
-          .addChoices({ name: '🟡 Heads', value: 'heads' }, { name: '⚪ Tails', value: 'tails' }))),
+        .addIntegerOption(opt => opt.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(10))),
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
@@ -46,17 +40,17 @@ module.exports = {
     const player = await getOrCreatePlayer(interaction.user.id, interaction.user.username);
 
     if (player.coins < BigInt(bet)) {
-      return interaction.editReply({ content: \`❌ You only have 🪙 **\${player.coins}** coins!\`, ephemeral: true });
+      return interaction.editReply({ content: `❌ You only have 🪙 **${player.coins}** coins!`, ephemeral: true });
     }
 
     if (sub === 'slots') {
       await interaction.editReply({ embeds: [new EmbedBuilder().setTitle('🎰 Spinning...').setDescription('🎰 **[ 🔄 | 🔄 | 🔄 ]**')] });
       await new Promise(r => setTimeout(r, 800));
       const s1 = weightedSlot();
-      await interaction.editReply({ embeds: [new EmbedBuilder().setTitle('🎰 Spinning...').setDescription(\`🎰 **[ \${s1} | 🔄 | 🔄 ]**\`)] });
+      await interaction.editReply({ embeds: [new EmbedBuilder().setTitle('🎰 Spinning...').setDescription(`🎰 **[ ${s1} | 🔄 | 🔄 ]**`)] });
       await new Promise(r => setTimeout(r, 700));
       const s2 = weightedSlot();
-      await interaction.editReply({ embeds: [new EmbedBuilder().setTitle('🎰 Spinning...').setDescription(\`🎰 **[ \${s1} | \${s2} | 🔄 ]**\`)] });
+      await interaction.editReply({ embeds: [new EmbedBuilder().setTitle('🎰 Spinning...').setDescription(`🎰 **[ ${s1} | ${s2} | 🔄 ]**`)] });
       await new Promise(r => setTimeout(r, 700));
       
       const s3 = weightedSlot();
@@ -72,7 +66,7 @@ module.exports = {
       const finalEmbed = new EmbedBuilder()
         .setColor(multi > 0 ? 0xf1c40f : 0xcc0000)
         .setTitle('🎰 Slot Machine Result')
-        .setDescription(\`🎰 **[ \${s1} | \${s2} | \${s3} ]**\\n\\n\${multi >= 0.5 ? \`🎉 Won: \${winAmount} coins!\` : '💸 Lost your bet.'}\\n**Balance:** \${updated.coins} coins\`);
+        .setDescription(`🎰 **[ ${s1} | ${s2} | ${s3} ]**\n\n${multi >= 0.5 ? `🎉 Won: ${winAmount} coins!` : '💸 Lost your bet.'}\n**Balance:** ${updated.coins} coins`);
       return interaction.editReply({ embeds: [finalEmbed] });
     }
   }
