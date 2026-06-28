@@ -3,7 +3,7 @@ const { getOrCreatePlayer, prisma } = require('../../database/client');
 const { sleep } = require('../../utils/helpers');
 
 const SLOT_SYMBOLS = ['🍒', '🍋', '🍇', '💎', '7️⃣', '🃏'];
-const SLOT_WEIGHTS  = [35, 25, 20, 10, 7, 3];
+const SLOT_WEIGHTS  = [35,    25,   20,   10,   7,    3  ];
 
 function weightedSlot() {
   const total = SLOT_WEIGHTS.reduce((a, b) => a + b, 0);
@@ -31,8 +31,8 @@ module.exports = {
     .setName('gamble')
     .setDescription('Risk your gold for big rewards')
     .addSubcommand(sub => sub.setName('slots').setDescription('Spin the slot machine 🎰').addIntegerOption(o => o.setName('bet').setDescription('Amount of gold to bet').setRequired(true).setMinValue(10)))
-    .addSubcommand(sub => sub.setName('coinflip').setDescription('50/50 coin flip 🪙').addIntegerOption(o => o.setName('bet').setDescription('Amount of gold to bet').setRequired(true).setMinValue(10)).addStringOption(o => o.setName('side').setDescription('Choose heads or tails').setRequired(true).addChoices({name: '🟡 Heads', value: 'heads'}, {name: '⚪ Tails', value: 'tails'})))
-    .addSubcommand(sub => sub.setName('dice').setDescription('Roll dice — guess higher or lower 🎲').addIntegerOption(o => o.setName('bet').setDescription('Amount of gold to bet').setRequired(true).setMinValue(10)).addStringOption(o => o.setName('guess').setDescription('Higher or lower than 7?').setRequired(true).addChoices({name: '⬆️ Higher (>7)', value: 'high'}, {name: '⬇️ Lower (<7)', value: 'low'}))),
+    .addSubcommand(sub => sub.setName('coinflip').setDescription('50/50 coin flip 🪙').addIntegerOption(o => o.setName('bet').setDescription('Amount of gold to bet').setRequired(true).setMinValue(10)).addStringOption(o => o.setName('side').setDescription('Choose heads or tails').setRequired(true).addChoices({ name: '🟡 Heads', value: 'heads' }, { name: '⚪ Tails', value: 'tails' })))
+    .addSubcommand(sub => sub.setName('dice').setDescription('Roll dice — guess higher or lower 🎲').addIntegerOption(o => o.setName('bet').setDescription('Amount of gold to bet').setRequired(true).setMinValue(10)).addStringOption(o => o.setName('guess').setDescription('Higher or lower than 7?').setRequired(true).addChoices({ name: '⬆️ Higher (>7)', value: 'high' }, { name: '⬇️ Lower (<7)', value: 'low' }))),
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();

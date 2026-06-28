@@ -3,6 +3,11 @@ const { RARITIES, WORLDS } = require('../config/gameData');
 const ms = require('ms');
 
 // ============================================================
+// SLEEP (FOR DELAYS)
+// ============================================================
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// ============================================================
 // PROGRESS BAR
 // ============================================================
 function progressBar(current, max, length = 20, filledChar = '█', emptyChar = '░') {
@@ -91,7 +96,7 @@ function rewardEmbed({ title, description, coins, xp, items = [], levelUp, newLe
   }
 
   if (levelUp) {
-    embed.addFields({ name: '🎉 LEVEL UP!', value: `Level **${newLevel - 1}** → **${newLevel}**`, inline: false });
+    embed.addFields({ name: '🎉 LEVEL UP!', value: `Level **${newLevel - 1}}** → **${newLevel}**`, inline: false });
   }
 
   return embed;
@@ -142,12 +147,11 @@ function randomInt(min, max) {
 // RANDOM WEIGHTED ITEM FROM LOOT TABLE
 // ============================================================
 function rollLoot(lootTable, rarity) {
-  // filter items matching rarity or pick random
   return randomFrom(lootTable);
 }
 
 module.exports = {
-  progressBar, rarityColor, formatNumber, formatCooldown,
+  sleep, progressBar, rarityColor, formatNumber, formatCooldown,
   profileEmbed, rewardEmbed, errorEmbed, cooldownEmbed, successEmbed,
   randomFrom, randomInt, rollLoot,
 };
