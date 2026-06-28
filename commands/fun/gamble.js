@@ -3,7 +3,7 @@ const { getOrCreatePlayer, prisma } = require('../../database/client');
 const { sleep } = require('../../utils/helpers');
 
 const SLOT_SYMBOLS = ['🍒', '🍋', '🍇', '💎', '7️⃣', '🃏'];
-const SLOT_WEIGHTS  = [35,    25,   20,   10,   7,    3  ];
+const SLOT_WEIGHTS  = [35, 25, 20, 10, 7, 3];
 
 function weightedSlot() {
   const total = SLOT_WEIGHTS.reduce((a, b) => a + b, 0);
@@ -31,8 +31,8 @@ module.exports = {
     .setName('gamble')
     .setDescription('Risk your gold for big rewards')
     .addSubcommand(sub => sub.setName('slots').setDescription('Spin the slot machine 🎰').addIntegerOption(o => o.setName('bet').setDescription('Amount of gold to bet').setRequired(true).setMinValue(10)))
-    .addSubcommand(sub => sub.setName('coinflip').setDescription('50/50 coin flip 🪙').addIntegerOption(o => o.setName('bet').setDescription('Amount of gold to bet').setRequired(true).setMinValue(10)).addStringOption(o => o.setName('side').setDescription('Choose heads or tails').setRequired(true).addChoices({ name: '🟡 Heads', value: 'heads' }, { name: '⚪ Tails', value: 'tails' })))
-    .addSubcommand(sub => sub.setName('dice').setDescription('Roll dice — guess higher or lower 🎲').addIntegerOption(o => o.setName('bet').setDescription('Amount of gold to bet').setRequired(true).setMinValue(10)).addStringOption(o => o.setName('guess').setDescription('Higher or lower than 7?').setRequired(true).addChoices({ name: '⬆️ Higher (>7)', value: 'high' }, { name: '⬇️ Lower (<7)', value: 'low' }))),
+    .addSubcommand(sub => sub.setName('coinflip').setDescription('50/50 coin flip 🪙').addIntegerOption(o => o.setName('bet').setDescription('Amount of gold to bet').setRequired(true).setMinValue(10)).addStringOption(o => o.setName('side').setDescription('Choose heads or tails').setRequired(true).addChoices({name: '🟡 Heads', value: 'heads'}, {name: '⚪ Tails', value: 'tails'})))
+    .addSubcommand(sub => sub.setName('dice').setDescription('Roll dice — guess higher or lower 🎲').addIntegerOption(o => o.setName('bet').setDescription('Amount of gold to bet').setRequired(true).setMinValue(10)).addStringOption(o => o.setName('guess').setDescription('Higher or lower than 7?').setRequired(true).addChoices({name: '⬆️ Higher (>7)', value: 'high'}, {name: '⬇️ Lower (<7)', value: 'low'}))),
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
@@ -55,7 +55,7 @@ module.exports = {
       const winAmount = BigInt(Math.floor(Number(bet) * multi));
       const net = winAmount - bet;
       const updated = await prisma.player.update({ where: { id: player.id }, data: { coins: { increment: net } } });
-      const resultText = multi >= 2 ? `🎉 **JACKPOT! ${multi}x multiplier!**\n+🪙 **${winAmount}** gold!` : (multi === 0.5 ? `✨ **Partial match!** Got half back.\n+🪙 **${winAmount}** gold` : `💸 **No match. Lost 🪙 ${bet} gold.**`);
+      const resultText = multi >= 2 ? `**JACKPOT! ${multi}x multiplier!**\n+🪙 **${winAmount}** gold!` : (multi === 0.5 ? `**Partial match!** Got half back.\n+🪙 **${winAmount}** gold` : `**No match. Lost 🪙 ${bet} gold.**`);
       return interaction.editReply({ embeds: [new EmbedBuilder().setColor(net >= 0n ? 0xf1c40f : 0xcc0000).setTitle('🎰 Slot Machine').setDescription(`🎰 **[ ${s1}  |  ${s2}  |  ${s3} ]**\n\n${resultText}\n\n**Balance:** 🪙 ${updated.coins}`)] });
     }
 
@@ -67,7 +67,7 @@ module.exports = {
       const won = result === guess;
       const net = won ? bet : -bet;
       const updated = await prisma.player.update({ where: { id: player.id }, data: { coins: { increment: net } } });
-      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(won ? 0x00cc66 : 0xcc0000).setTitle('🪙 Coin Flip Result').setDescription(`Result: **${result === 'heads' ? '🟡 Heads' : '⚪ Tails'}**\nYou guessed: **${guess === 'heads' ? '🟡 Heads' : '⚪ Tails'}**\n\n${won ? `✅ **You won 🪙 ${bet}!**` : `❌ **You lost 🪙 ${bet}.**`}\n**Balance:** 🪙 ${updated.coins}`)] });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(won ? 0x00cc66 : 0xcc0000).setTitle('🪙 Coin Flip Result').setDescription(`Result: **${result === 'heads' ? 'Heads' : 'Tails'}**\nYou guessed: **${guess === 'heads' ? 'Heads' : 'Tails'}**\n\n${won ? `**You won 🪙 ${bet}!**` : `**You lost 🪙 ${bet}.**`}\n**Balance:** 🪙 ${updated.coins}`)] });
     }
 
     if (sub === 'dice') {
@@ -81,8 +81,7 @@ module.exports = {
       const push = total === 7;
       const net = push ? 0n : (won ? bet : -bet);
       const updated = await prisma.player.update({ where: { id: player.id }, data: { coins: { increment: net } } });
-      const diceEmoji = ['', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣'];
-      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(push ? 0xf0c040 : won ? 0x00cc66 : 0xcc0000).setTitle('🎲 Dice Result').setDescription(`**${diceEmoji[d1]} + ${diceEmoji[d2]} = ${total}**\nYou guessed: **${guess === 'high' ? '⬆️ Higher than 7' : '⬇️ Lower than 7'}**\n\n${push ? `↔️ **Push! Total is exactly 7. Bet returned.**` : won ? `✅ **You won 🪙 ${bet}!**` : `❌ **You lost 🪙 ${bet}.**`}\n**Balance:** 🪙 ${updated.coins}`)] });
+      return interaction.editReply({ embeds: [new EmbedBuilder().setColor(push ? 0xf0c040 : won ? 0x00cc66 : 0xcc0000).setTitle('🎲 Dice Result').setDescription(`**${d1} + ${d2} = ${total}**\nYou guessed: **${guess === 'high' ? 'Higher than 7' : 'Lower than 7'}**\n\n${push ? `**Push! Total is exactly 7. Bet returned.**` : won ? `**You won 🪙 ${bet}!**` : `**You lost 🪙 ${bet}.**`}\n**Balance:** 🪙 ${updated.coins}`)] });
     }
   }
 };
