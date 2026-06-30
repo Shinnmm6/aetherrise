@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
+const { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -20,24 +20,27 @@ module.exports = {
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
-    const user = interaction.options.getMember('user');
+    const member = interaction.options.getMember('user');
     const role = interaction.options.getRole('role');
 
     if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
         return interaction.editReply({ content: 'You do not have permission to manage roles.', ephemeral: true });
     }
 
-    if (!user || !role) {
-        return interaction.editReply({ content: 'Invalid user or role.', ephemeral: true });
-    }
-
     try {
         if (sub === 'add') {
-            await user.roles.add(role);
-            return interaction.editReply({ content: `Added **${role.name}** to **${user.user.username}**.` });
+            await member.roles.add(role);
+            const embed = new EmbedBuilder()
+                .setColor(0x0099FF) // Blue color for the embed
+                .setDescription(`Successfully added role **${role.name}** to ${member}`);
+            return interaction.editReply({ embeds: [embed] });
+            
         } else if (sub === 'remove') {
-            await user.roles.remove(role);
-            return interaction.editReply({ content: `Removed **${role.name}** from **${user.user.username}**.` });
+            await member.roles.remove(role);
+            const embed = new EmbedBuilder()
+                .setColor(0xFF4444) // Red color for removal
+                .setDescription(`Successfully removed role **${role.name}** from ${member}`);
+            return interaction.editReply({ embeds: [embed] });
         }
     } catch (error) {
         console.error(error);
