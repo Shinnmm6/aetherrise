@@ -31,14 +31,14 @@ module.exports = {
         if (sub === 'add') {
             await member.roles.add(role);
             const embed = new EmbedBuilder()
-                .setColor(0x0099FF) // Blue color for the embed
+                .setColor(0x0099FF)
                 .setDescription(`Successfully added role **${role.name}** to ${member}`);
             return interaction.editReply({ embeds: [embed] });
             
         } else if (sub === 'remove') {
             await member.roles.remove(role);
             const embed = new EmbedBuilder()
-                .setColor(0xFF4444) // Red color for removal
+                .setColor(0xFF4444)
                 .setDescription(`Successfully removed role **${role.name}** from ${member}`);
             return interaction.editReply({ embeds: [embed] });
         }
