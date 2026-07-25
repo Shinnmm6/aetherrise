@@ -2,6 +2,9 @@ const { Events } = require('discord.js');
 
 const PROTECTED_USER_ID = '1181235979286237264';
 
+// In-memory tracker for ping count per user ID
+const pingTracker = new Map();
+
 module.exports = {
   name: Events.MessageCreate,
   async execute(message) {
@@ -12,25 +15,43 @@ module.exports = {
     if (!message.mentions.users.has(PROTECTED_USER_ID)) return;
 
     try {
-      // Fetch your guild member object to compare roles
+      // Fetch target member to compare role hierarchy
       const targetMember = await message.guild.members.fetch(PROTECTED_USER_ID).catch(() => null);
 
-      // If you are not in the server or the pinger is you, do nothing
       if (!targetMember || message.author.id === PROTECTED_USER_ID) return;
 
-      // Compare highest role positions (higher number = higher role in hierarchy)
       const authorRolePosition = message.member.roles.highest.position;
       const targetRolePosition = targetMember.roles.highest.position;
 
       // Check if author's highest role is lower than yours
       if (authorRolePosition < targetRolePosition) {
-        // Delete the pinging message
+        // Delete the offending message immediately
         await message.delete().catch(() => {});
 
-        // Send warning message
-        const warning = await message.channel.send(`nuh uh <@${message.author.id}>, you are not allowed to mention him!`);
+        const userId = message.author.id;
+        const currentPings = (pingTracker.get(userId) || 0) + 1;
+        pingTracker.set(userId, currentPings);
 
-        // Automatically clean up the bot's warning message after 5 seconds to keep chat clean
+        let warningMessage = '';
+
+        if (currentPings === 1) {
+          warningMessage = ` <@${userId}>, you are not allowed to mention him!`;
+        } else if (currentPings === 2) {
+          warningMessage = ` <@${userId}>, last ping you'll get mute 1 hour!`;
+        } else if (currentPings >= 3) {
+          // Timeout user for 1 hour (3,600,000 milliseconds)
+          if (message.member.moderatable) {
+            await message.member.timeout(60 * 60 * 1000, 'Exceeded unauthorized pings limit');
+            warningMessage = ` <@${userId}> has been muted for 1 hour for repeatedly pinging!`;
+            // Reset count after timeout
+            pingTracker.delete(userId);
+          } else {
+            warningMessage = ` <@${userId}>, last ping you'll get mute 1 hour! (Bot missing permission to timeout)`;
+          }
+        }
+
+        // Send warning and delete it after 5 seconds to keep chat clean
+        const warning = await message.channel.send(warningMessage);
         setTimeout(() => warning.delete().catch(() => {}), 5000);
       }
     } catch (error) {
