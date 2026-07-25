@@ -28,7 +28,7 @@ module.exports = {
         await message.delete().catch(() => {});
 
         // Send warning message
-        const warning = await message.channel.send(`❌ <@${message.author.id}>, you are not allowed to mention him!`);
+        const warning = await message.channel.send(`nuh uh <@${message.author.id}>, you are not allowed to mention him!`);
 
         // Automatically clean up the bot's warning message after 5 seconds to keep chat clean
         setTimeout(() => warning.delete().catch(() => {}), 5000);
