@@ -21,7 +21,7 @@ async function sendGhostMessage(client) {
         "You are special to me",
         "TTJY lost garuntee 50/50 on Lynae's banner - Naio",
         "im goated - Bob",
-        "PRAISE OUR GREAT SAVIOR PRADA - prada"
+        "PRAISE OUR GREAT SAVIOR PRADA - prada",
         "Why Naio_Xiaoq hates TTJY so much?"
     ];
 
