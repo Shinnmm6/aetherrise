@@ -22,6 +22,7 @@ async function sendGhostMessage(client) {
         "TTJY lost garuntee 50/50 on Lynae's banner - Naio",
         "im goated - Bob",
         "PRAISE OUR GREAT SAVIOR PRADA - prada"
+        "Why Naio_Xiaoq hates TTJY?"
     ];
 
     const msg = messages[Math.floor(Math.random() * messages.length)];
