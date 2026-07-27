@@ -18,7 +18,10 @@ async function sendGhostMessage(client) {
         "Do you know that khallel is dumb? Just kidding he's gay",
         "Please TTJY dont hate me",
         "I loves femboy and you my dear",
-        "You are special to me"
+        "You are special to me",
+        "TTJY lost garuntee 50/50 on Lynae's banner - Naio",
+        "im goated - Bob",
+        "PRAISE OUR GREAT SAVIOR PRADA - prada"
     ];
 
     const msg = messages[Math.floor(Math.random() * messages.length)];
