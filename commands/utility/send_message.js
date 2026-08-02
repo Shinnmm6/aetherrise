@@ -1,7 +1,18 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
+// Helper to safely extract the actual http/https URL from any string input
+function extractFirstUrl(text) {
+  if (!text) return null;
+  const match = text.match(/https?:\/\/[^\s]+/i);
+  return match ? match[0] : null;
+}
+
 // Helper to extract direct image/GIF links from webpage links (Klipy, Tenor, Giphy, etc.)
-async function resolveDirectMediaUrl(url) {
+async function resolveDirectMediaUrl(rawInput) {
+  const url = extractFirstUrl(rawInput);
+  if (!url) return null;
+
+  // Direct media link extensions or Discord CDN links
   if (/\.(gif|jpe?g|png|webp)(\?.*)?$/i.test(url) || url.includes('discordapp.com') || url.includes('discordapp.net')) {
     return url;
   }
@@ -12,7 +23,7 @@ async function resolveDirectMediaUrl(url) {
     });
     const html = await response.text();
 
-    // Look for OpenGraph image meta tag
+    // Look for OpenGraph image or video meta tag in page HTML
     const match = html.match(/<meta\s+(?:property|name)=["']og:(?:image|video)["']\s+content=["']([^"']+)["']/i) ||
                   html.match(/content=["']([^"']+)["']\s+(?:property|name)=["']og:(?:image|video)["']/i);
 
@@ -51,19 +62,22 @@ module.exports = {
   async execute(interaction) {
     const channel = interaction.options.getChannel('channel');
     const text = interaction.options.getString('text');
-    const gifUrl = interaction.options.getString('gif_url');
+    const rawGifUrl = interaction.options.getString('gif_url');
     const attachment = interaction.options.getAttachment('attachment');
 
     try {
       const sendOptions = { content: text, files: [] };
 
-      // Resolve webpage link to direct CDN file & attach natively
-      if (gifUrl) {
-        const directMedia = await resolveDirectMediaUrl(gifUrl);
-        sendOptions.files.push({
-          attachment: directMedia,
-          name: 'image.gif'
-        });
+      if (rawGifUrl) {
+        const resolvedMedia = await resolveDirectMediaUrl(rawGifUrl);
+
+        // Ensure we only attach valid http/https URLs as file attachments
+        if (resolvedMedia && /^https?:\/\//i.test(resolvedMedia)) {
+          sendOptions.files.push({
+            attachment: resolvedMedia,
+            name: 'media.gif'
+          });
+        }
       }
 
       // Add uploaded file attachment if present
