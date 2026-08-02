@@ -15,7 +15,7 @@ module.exports = {
         .setRequired(true))
     .addStringOption(option => 
       option.setName('gif_url')
-        .setDescription('Optional: URL link to a GIF (Tenor, Giphy, direct link)')
+        .setDescription('Optional: URL link to a GIF/image (will be cleanly attached)')
         .setRequired(false))
     .addAttachmentOption(option => 
       option.setName('attachment')
@@ -29,18 +29,16 @@ module.exports = {
     const attachment = interaction.options.getAttachment('attachment');
 
     try {
-      let messageContent = text;
-      
-      // Append the GIF URL to the message text if provided
+      const sendOptions = { content: text, files: [] };
+
+      // Attach URL directly as a file to hide the raw link text
       if (gifUrl) {
-        messageContent += `\n${gifUrl}`;
+        sendOptions.files.push(gifUrl);
       }
 
-      const sendOptions = { content: messageContent };
-
-      // Attach file if uploaded
+      // Attach uploaded file if present
       if (attachment) {
-        sendOptions.files = [attachment.url];
+        sendOptions.files.push(attachment.url);
       }
 
       await channel.send(sendOptions);
