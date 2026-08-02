@@ -15,7 +15,7 @@ module.exports = {
         .setRequired(true))
     .addStringOption(option => 
       option.setName('gif_url')
-        .setDescription('Optional: URL link to a GIF/image (will be cleanly attached)')
+        .setDescription('Optional: GIF URL (Direct file link, Tenor, Giphy, or Klipy)')
         .setRequired(false))
     .addAttachmentOption(option => 
       option.setName('attachment')
@@ -29,17 +29,28 @@ module.exports = {
     const attachment = interaction.options.getAttachment('attachment');
 
     try {
-      const sendOptions = { content: text, files: [] };
+      let messageContent = text;
+      const sendOptions = { files: [] };
 
-      // Attach URL directly as a file to hide the raw link text
       if (gifUrl) {
-        sendOptions.files.push(gifUrl);
+        // Check if the URL is a direct media file / CDN link
+        const isDirectFile = /\.(gif|jpe?g|png|webp)(\?.*)?$/i.test(gifUrl) || gifUrl.includes('cdn.discordapp.com');
+
+        if (isDirectFile) {
+          // Send as attachment to hide the raw link text
+          sendOptions.files.push(gifUrl);
+        } else {
+          // Standard webpage link (Klipy, Tenor, Giphy) -> append to text so Discord embeds it
+          messageContent += `\n${gifUrl}`;
+        }
       }
 
-      // Attach uploaded file if present
+      // Add file upload if present
       if (attachment) {
         sendOptions.files.push(attachment.url);
       }
+
+      sendOptions.content = messageContent;
 
       await channel.send(sendOptions);
 
