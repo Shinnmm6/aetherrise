@@ -1,40 +1,63 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
-// Helper to safely extract the actual http/https URL from any string input
+// Safely extract the first http/https URL from text
 function extractFirstUrl(text) {
   if (!text) return null;
   const match = text.match(/https?:\/\/[^\s]+/i);
   return match ? match[0] : null;
 }
 
-// Helper to extract direct image/GIF links from webpage links (Klipy, Tenor, Giphy, etc.)
-async function resolveDirectMediaUrl(rawInput) {
+// Scrape webpage meta tags and download media into a Buffer
+async function getMediaBuffer(rawInput) {
   const url = extractFirstUrl(rawInput);
   if (!url) return null;
 
-  // Direct media link extensions or Discord CDN links
-  if (/\.(gif|jpe?g|png|webp)(\?.*)?$/i.test(url) || url.includes('discordapp.com') || url.includes('discordapp.net')) {
-    return url;
+  let targetUrl = url;
+
+  // Scrape direct media URL if passed a webpage link (Klipy, Tenor, Giphy, etc.)
+  if (!/\.(gif|jpe?g|png|webp|mp4)(\?.*)?$/i.test(url) && !url.includes('cdn.discordapp.com') && !url.includes('media.discordapp.net')) {
+    try {
+      const pageRes = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+      });
+      if (pageRes.ok) {
+        const html = await pageRes.text();
+        const match = html.match(/<meta\s+(?:property|name)=["']og:(?:video|image)["']\s+content=["']([^"']+)["']/i) ||
+                      html.match(/content=["']([^"']+)["']\s+(?:property|name)=["']og:(?:video|image)["']/i);
+        if (match && match[1]) {
+          targetUrl = match[1].replace(/&amp;/g, '&');
+        }
+      }
+    } catch (err) {
+      console.error('[send_message] Webpage scrape failed:', err.message);
+    }
   }
 
+  // Fetch the raw media binary buffer
   try {
-    const response = await fetch(url, {
+    const mediaRes = await fetch(targetUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
     });
-    const html = await response.text();
 
-    // Look for OpenGraph image or video meta tag in page HTML
-    const match = html.match(/<meta\s+(?:property|name)=["']og:(?:image|video)["']\s+content=["']([^"']+)["']/i) ||
-                  html.match(/content=["']([^"']+)["']\s+(?:property|name)=["']og:(?:image|video)["']/i);
+    if (!mediaRes.ok) return null;
 
-    if (match && match[1]) {
-      return match[1].replace(/&amp;/g, '&');
-    }
-  } catch (error) {
-    console.error('Failed to resolve direct media URL:', error);
+    const contentType = mediaRes.headers.get('content-type') || '';
+    let ext = 'gif';
+
+    if (contentType.includes('video/mp4') || targetUrl.includes('.mp4')) ext = 'mp4';
+    else if (contentType.includes('image/webp') || targetUrl.includes('.webp')) ext = 'webp';
+    else if (contentType.includes('image/png') || targetUrl.includes('.png')) ext = 'png';
+    else if (contentType.includes('image/jpeg') || targetUrl.includes('.jpg')) ext = 'jpg';
+
+    const arrayBuffer = await mediaRes.arrayBuffer();
+    return {
+      attachment: Buffer.from(arrayBuffer),
+      name: `media.${ext}`
+    };
+  } catch (err) {
+    console.error('[send_message] Buffer download failed:', err.message);
+    return null;
   }
-
-  return url;
 }
 
 module.exports = {
@@ -68,15 +91,11 @@ module.exports = {
     try {
       const sendOptions = { content: text, files: [] };
 
+      // Process and attach media buffer from URL
       if (rawGifUrl) {
-        const resolvedMedia = await resolveDirectMediaUrl(rawGifUrl);
-
-        // Ensure we only attach valid http/https URLs as file attachments
-        if (resolvedMedia && /^https?:\/\//i.test(resolvedMedia)) {
-          sendOptions.files.push({
-            attachment: resolvedMedia,
-            name: 'media.gif'
-          });
+        const mediaFile = await getMediaBuffer(rawGifUrl);
+        if (mediaFile) {
+          sendOptions.files.push(mediaFile);
         }
       }
 
