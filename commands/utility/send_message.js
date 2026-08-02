@@ -1,40 +1,68 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
-// Helper to safely extract the first http/https URL
+// Helper to extract the first HTTP/HTTPS URL from user input
 function extractFirstUrl(text) {
   if (!text) return null;
   const match = text.match(/https?:\/\/[^\s]+/i);
   return match ? match[0] : null;
 }
 
-// Try downloading direct image/video binaries
-async function getMediaBuffer(url) {
+// Scrapes web pages (Klipy, Tenor, Giphy) to extract and download the raw media buffer
+async function resolveAndDownloadMedia(rawInput) {
+  const url = extractFirstUrl(rawInput);
+  if (!url) return null;
+
+  let directUrl = url;
+
+  // 1. If it's a webpage link (not a direct file), scrape the HTML for og:video / og:image
+  if (!/\.(gif|jpe?g|png|webp|mp4)(\?.*)?$/i.test(url) && !url.includes('cdn.discordapp.com')) {
+    try {
+      const pageRes = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        }
+      });
+
+      if (pageRes.ok) {
+        const html = await pageRes.text();
+        const match = html.match(/<meta\s+(?:property|name)=["'](?:og:video|og:image:secure_url|og:image|twitter:image)["']\s+content=["']([^"']+)["']/i) ||
+                      html.match(/content=["']([^"']+)["']\s+(?:property|name)=["'](?:og:video|og:image:secure_url|og:image|twitter:image)["']/i);
+
+        if (match && match[1]) {
+          directUrl = match[1].replace(/&amp;/g, '&');
+        }
+      }
+    } catch (err) {
+      console.error('[send_message] Webpage scrape error:', err.message);
+    }
+  }
+
+  // 2. Download the binary buffer from the direct media URL
   try {
-    const mediaRes = await fetch(url, {
+    const mediaRes = await fetch(directUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
       }
     });
 
     if (!mediaRes.ok) return null;
 
     const contentType = mediaRes.headers.get('content-type') || '';
-    if (!contentType.includes('image') && !contentType.includes('video')) {
-      return null;
-    }
-
-    let ext = 'gif';
-    if (contentType.includes('video/mp4') || url.includes('.mp4')) ext = 'mp4';
-    else if (contentType.includes('image/webp') || url.includes('.webp')) ext = 'webp';
-    else if (contentType.includes('image/png') || url.includes('.png')) ext = 'png';
-    else if (contentType.includes('image/jpeg') || url.includes('.jpg')) ext = 'jpg';
-
     const arrayBuffer = await mediaRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    let filename = 'media.gif';
+    if (contentType.includes('video/mp4') || directUrl.includes('.mp4')) filename = 'media.mp4';
+    else if (contentType.includes('image/webp') || directUrl.includes('.webp')) filename = 'media.webp';
+    else if (contentType.includes('image/png') || directUrl.includes('.png')) filename = 'media.png';
+    else if (contentType.includes('image/jpeg') || directUrl.includes('.jpg')) filename = 'media.jpg';
+
     return {
-      attachment: Buffer.from(arrayBuffer),
-      name: `media.${ext}`
+      attachment: buffer,
+      name: filename
     };
   } catch (err) {
+    console.error('[send_message] Media download error:', err.message);
     return null;
   }
 }
@@ -68,33 +96,23 @@ module.exports = {
     const attachment = interaction.options.getAttachment('attachment');
 
     try {
-      let content = text;
       const files = [];
 
+      // Download and attach media from Klipy/Tenor URL
       if (rawGifUrl) {
-        const cleanUrl = extractFirstUrl(rawGifUrl);
-
-        if (cleanUrl) {
-          // Attempt to download direct binary file first
-          const mediaFile = await getMediaBuffer(cleanUrl);
-
-          if (mediaFile) {
-            files.push(mediaFile);
-          } else {
-            // Fallback for sites like Klipy/Tenor:
-            // Uses invisible zero-width space hyperlink [\u200B](URL)
-            // Discord embeds the GIF preview cleanly without showing visible link text in chat!
-            content += ` [\u200B](${cleanUrl})`;
-          }
+        const mediaFile = await resolveAndDownloadMedia(rawGifUrl);
+        if (mediaFile) {
+          files.push(mediaFile);
         }
       }
 
-      // Add direct uploaded file if present
+      // Add uploaded attachment if present
       if (attachment) {
         files.push(attachment.url);
       }
 
-      await channel.send({ content, files });
+      // Send clean text and attached media with NO links in content
+      await channel.send({ content: text, files });
 
       const responseText = `✅ Message sent to ${channel}!`;
       if (!interaction.replied && !interaction.deferred) {
