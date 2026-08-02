@@ -1,70 +1,17 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
-// Helper to extract the first HTTP/HTTPS URL from user input
+// Extract the first http/https link from input
 function extractFirstUrl(text) {
   if (!text) return null;
   const match = text.match(/https?:\/\/[^\s]+/i);
   return match ? match[0] : null;
 }
 
-// Scrapes web pages (Klipy, Tenor, Giphy) to extract and download the raw media buffer
-async function resolveAndDownloadMedia(rawInput) {
-  const url = extractFirstUrl(rawInput);
-  if (!url) return null;
-
-  let directUrl = url;
-
-  // 1. If it's a webpage link (not a direct file), scrape the HTML for og:video / og:image
-  if (!/\.(gif|jpe?g|png|webp|mp4)(\?.*)?$/i.test(url) && !url.includes('cdn.discordapp.com')) {
-    try {
-      const pageRes = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-        }
-      });
-
-      if (pageRes.ok) {
-        const html = await pageRes.text();
-        const match = html.match(/<meta\s+(?:property|name)=["'](?:og:video|og:image:secure_url|og:image|twitter:image)["']\s+content=["']([^"']+)["']/i) ||
-                      html.match(/content=["']([^"']+)["']\s+(?:property|name)=["'](?:og:video|og:image:secure_url|og:image|twitter:image)["']/i);
-
-        if (match && match[1]) {
-          directUrl = match[1].replace(/&amp;/g, '&');
-        }
-      }
-    } catch (err) {
-      console.error('[send_message] Webpage scrape error:', err.message);
-    }
-  }
-
-  // 2. Download the binary buffer from the direct media URL
-  try {
-    const mediaRes = await fetch(directUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-      }
-    });
-
-    if (!mediaRes.ok) return null;
-
-    const contentType = mediaRes.headers.get('content-type') || '';
-    const arrayBuffer = await mediaRes.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    let filename = 'media.gif';
-    if (contentType.includes('video/mp4') || directUrl.includes('.mp4')) filename = 'media.mp4';
-    else if (contentType.includes('image/webp') || directUrl.includes('.webp')) filename = 'media.webp';
-    else if (contentType.includes('image/png') || directUrl.includes('.png')) filename = 'media.png';
-    else if (contentType.includes('image/jpeg') || directUrl.includes('.jpg')) filename = 'media.jpg';
-
-    return {
-      attachment: buffer,
-      name: filename
-    };
-  } catch (err) {
-    console.error('[send_message] Media download error:', err.message);
-    return null;
-  }
+// Check if link is a direct file extension or Discord CDN file
+function isDirectMediaUrl(url) {
+  return /\.(gif|jpe?g|png|webp|mp4)(\?.*)?$/i.test(url) || 
+         url.includes('cdn.discordapp.com') || 
+         url.includes('media.discordapp.net');
 }
 
 module.exports = {
@@ -96,23 +43,34 @@ module.exports = {
     const attachment = interaction.options.getAttachment('attachment');
 
     try {
-      const files = [];
+      const cleanUrl = extractFirstUrl(rawGifUrl);
 
-      // Download and attach media from Klipy/Tenor URL
-      if (rawGifUrl) {
-        const mediaFile = await resolveAndDownloadMedia(rawGifUrl);
-        if (mediaFile) {
-          files.push(mediaFile);
-        }
+      // 1. Direct Media Files / Discord CDN links -> Attach natively (No link text)
+      if (cleanUrl && isDirectMediaUrl(cleanUrl)) {
+        const files = [cleanUrl];
+        if (attachment) files.push(attachment.url);
+
+        await channel.send({ content: text, files });
+      } 
+      // 2. Webpage Links (Klipy, Tenor, Giphy) -> Embed Card (No link text)
+      else if (cleanUrl) {
+        const embed = new EmbedBuilder()
+          .setDescription(text)
+          .setImage(cleanUrl)
+          .setColor('#2b2d31'); // Matches Discord dark theme seamlessly
+
+        const payload = { embeds: [embed] };
+        if (attachment) payload.files = [attachment.url];
+
+        await channel.send(payload);
+      } 
+      // 3. Plain Text / Direct Uploads
+      else {
+        const payload = { content: text };
+        if (attachment) payload.files = [attachment.url];
+
+        await channel.send(payload);
       }
-
-      // Add uploaded attachment if present
-      if (attachment) {
-        files.push(attachment.url);
-      }
-
-      // Send clean text and attached media with NO links in content
-      await channel.send({ content: text, files });
 
       const responseText = `✅ Message sent to ${channel}!`;
       if (!interaction.replied && !interaction.deferred) {
