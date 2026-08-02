@@ -1,5 +1,31 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
+// Helper to extract direct image/GIF links from webpage links (Klipy, Tenor, Giphy, etc.)
+async function resolveDirectMediaUrl(url) {
+  if (/\.(gif|jpe?g|png|webp)(\?.*)?$/i.test(url) || url.includes('discordapp.com') || url.includes('discordapp.net')) {
+    return url;
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    const html = await response.text();
+
+    // Look for OpenGraph image meta tag
+    const match = html.match(/<meta\s+(?:property|name)=["']og:(?:image|video)["']\s+content=["']([^"']+)["']/i) ||
+                  html.match(/content=["']([^"']+)["']\s+(?:property|name)=["']og:(?:image|video)["']/i);
+
+    if (match && match[1]) {
+      return match[1].replace(/&amp;/g, '&');
+    }
+  } catch (error) {
+    console.error('Failed to resolve direct media URL:', error);
+  }
+
+  return url;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('send_message')
@@ -15,7 +41,7 @@ module.exports = {
         .setRequired(true))
     .addStringOption(option => 
       option.setName('gif_url')
-        .setDescription('Optional: GIF URL (Direct file link, Tenor, Giphy, or Klipy)')
+        .setDescription('Optional: URL link to a GIF (Klipy, Tenor, Giphy, or Direct Link)')
         .setRequired(false))
     .addAttachmentOption(option => 
       option.setName('attachment')
@@ -29,28 +55,21 @@ module.exports = {
     const attachment = interaction.options.getAttachment('attachment');
 
     try {
-      let messageContent = text;
-      const sendOptions = { files: [] };
+      const sendOptions = { content: text, files: [] };
 
+      // Resolve webpage link to direct CDN file & attach natively
       if (gifUrl) {
-        // Check if the URL is a direct media file / CDN link
-        const isDirectFile = /\.(gif|jpe?g|png|webp)(\?.*)?$/i.test(gifUrl) || gifUrl.includes('cdn.discordapp.com');
-
-        if (isDirectFile) {
-          // Send as attachment to hide the raw link text
-          sendOptions.files.push(gifUrl);
-        } else {
-          // Standard webpage link (Klipy, Tenor, Giphy) -> append to text so Discord embeds it
-          messageContent += `\n${gifUrl}`;
-        }
+        const directMedia = await resolveDirectMediaUrl(gifUrl);
+        sendOptions.files.push({
+          attachment: directMedia,
+          name: 'image.gif'
+        });
       }
 
-      // Add file upload if present
+      // Add uploaded file attachment if present
       if (attachment) {
         sendOptions.files.push(attachment.url);
       }
-
-      sendOptions.content = messageContent;
 
       await channel.send(sendOptions);
 
