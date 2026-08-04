@@ -8,29 +8,25 @@ module.exports = {
   async execute(message) {
     if (!message.guild) return;
 
-    const isRealMention = message.mentions.users.has(PROTECTED_USER_ID);
+    // Detect any form of mention or raw ID presence
+    const mentionsUser = message.mentions.users.has(PROTECTED_USER_ID);
     const hasRawId = message.content.includes(PROTECTED_USER_ID);
-    
-    // Explicitly check for backslash escaping (\\<@) or unparsed raw IDs
-    const isEscapedPing =
-      message.content.includes(`\\<@${PROTECTED_USER_ID}>`) ||
-      message.content.includes(`\\<@!${PROTECTED_USER_ID}>`) ||
-      (hasRawId && !isRealMention);
+    const pingsMe = mentionsUser || hasRawId;
 
-    const pingsMe = isRealMention || hasRawId;
+    if (!pingsMe) return;
 
     // 1. Webhooks: Always delete
     if (message.webhookId) {
-      if (pingsMe) await message.delete().catch(() => {});
+      await message.delete().catch(() => {});
       return;
     }
 
-    // 2. Ignore standard bots or messages that don't target you
-    if (message.author.bot || !pingsMe) return;
+    // 2. Ignore standard bots and your own messages
+    if (message.author.bot || message.author.id === PROTECTED_USER_ID) return;
 
     try {
       const targetMember = await message.guild.members.fetch(PROTECTED_USER_ID).catch(() => null);
-      if (!targetMember || message.author.id === PROTECTED_USER_ID) return;
+      if (!targetMember) return;
 
       const authorRolePosition = message.member?.roles?.highest?.position ?? 0;
       const targetRolePosition = targetMember.roles.highest.position;
@@ -38,7 +34,7 @@ module.exports = {
       const isLowerRole = authorRolePosition < targetRolePosition;
 
       if (isLowerRole) {
-        // Lower Role: Delete ALL pings (normal or escaped) and apply warnings/timeouts
+        // Lower Role: Delete ALL pings (normal, escaped, or raw ID) and punish
         await message.delete().catch(() => {});
 
         const userId = message.author.id;
@@ -65,8 +61,13 @@ module.exports = {
         setTimeout(() => warning.delete().catch(() => {}), 5000);
 
       } else {
-        // Higher or Equal Role: Keep clean pings (@Shin), but delete escaped ghost pings
-        if (isEscapedPing) {
+        // Higher / Equal Role: Keep ONLY clean mentions.
+        // Delete if formatted with backslashes, backticks, or raw unparsed IDs.
+        const hasBackslash = message.content.includes('\\');
+        const hasBacktick = message.content.includes('`');
+        const isCleanPing = mentionsUser && !hasBackslash && !hasBacktick;
+
+        if (!isCleanPing) {
           await message.delete().catch(() => {});
         }
       }
