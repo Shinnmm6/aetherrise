@@ -8,12 +8,18 @@ module.exports = {
   async execute(message) {
     if (!message.guild) return;
 
-    // Detect real parsed mentions vs raw ID / escaped pings
     const isRealMention = message.mentions.users.has(PROTECTED_USER_ID);
     const hasRawId = message.content.includes(PROTECTED_USER_ID);
+    
+    // Explicitly check for backslash escaping (\\<@) or unparsed raw IDs
+    const isEscapedPing =
+      message.content.includes(`\\<@${PROTECTED_USER_ID}>`) ||
+      message.content.includes(`\\<@!${PROTECTED_USER_ID}>`) ||
+      (hasRawId && !isRealMention);
+
     const pingsMe = isRealMention || hasRawId;
 
-    // 1. Webhooks: Always delete if targeting you
+    // 1. Webhooks: Always delete
     if (message.webhookId) {
       if (pingsMe) await message.delete().catch(() => {});
       return;
@@ -32,7 +38,7 @@ module.exports = {
       const isLowerRole = authorRolePosition < targetRolePosition;
 
       if (isLowerRole) {
-        // Lower Role: Delete ALL pings (normal or escaped) and warn/mute
+        // Lower Role: Delete ALL pings (normal or escaped) and apply warnings/timeouts
         await message.delete().catch(() => {});
 
         const userId = message.author.id;
@@ -59,9 +65,7 @@ module.exports = {
         setTimeout(() => warning.delete().catch(() => {}), 5000);
 
       } else {
-        // Higher or Equal Role: Keep normal pings, but delete escaped ghost pings
-        const isEscapedPing = hasRawId && !isRealMention;
-
+        // Higher or Equal Role: Keep clean pings (@Shin), but delete escaped ghost pings
         if (isEscapedPing) {
           await message.delete().catch(() => {});
         }
