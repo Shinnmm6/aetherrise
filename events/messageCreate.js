@@ -1,6 +1,9 @@
 const { Events } = require('discord.js');
 
 const PROTECTED_USER_ID = '1181235979286237264';
+// Add any user IDs here that are allowed to ping you freely
+const WHITELISTED_USERS = ['1281981381995663432'];
+
 const pingTracker = new Map();
 
 module.exports = {
@@ -21,8 +24,14 @@ module.exports = {
       return;
     }
 
-    // 2. Ignore standard bots and your own messages
-    if (message.author.bot || message.author.id === PROTECTED_USER_ID) return;
+    // 2. Ignore standard bots, your own messages, and whitelisted users
+    if (
+      message.author.bot ||
+      message.author.id === PROTECTED_USER_ID ||
+      WHITELISTED_USERS.includes(message.author.id)
+    ) {
+      return;
+    }
 
     try {
       const targetMember = await message.guild.members.fetch(PROTECTED_USER_ID).catch(() => null);
