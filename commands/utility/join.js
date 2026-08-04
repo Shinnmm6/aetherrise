@@ -13,24 +13,34 @@ module.exports = {
         .setRequired(false)
     ),
   async execute(interaction) {
-    // Pick specified channel or fall back to user's current VC
+    // Helper function to handle replies safely whether deferred or not
+    const sendResponse = async (content, ephemeral = false) => {
+      try {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply({ content });
+        } else {
+          await interaction.reply({ content, ephemeral });
+        }
+      } catch (err) {
+        console.error('Failed to send interaction response:', err);
+      }
+    };
+
+    // Defer reply if interactionCreate hasn't already done so
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply().catch(() => {});
+    }
+
     const voiceChannel =
       interaction.options.getChannel('channel') || interaction.member?.voice?.channel;
 
     if (!voiceChannel) {
-      return interaction.reply({
-        content: 'You must either be in a voice channel or specify one!',
-        ephemeral: true,
-      });
+      return sendResponse('You must either be in a voice channel or specify one!', true);
     }
 
-    // Check bot permissions for that channel
     const permissions = voiceChannel.permissionsFor(interaction.client.user);
     if (!permissions.has(PermissionFlagsBits.Connect)) {
-      return interaction.reply({
-        content: `I don't have permission to join **${voiceChannel.name}**!`,
-        ephemeral: true,
-      });
+      return sendResponse(`I don't have permission to join **${voiceChannel.name}**!`, true);
     }
 
     try {
@@ -38,18 +48,13 @@ module.exports = {
         channelId: voiceChannel.id,
         guildId: interaction.guild.id,
         adapterCreator: interaction.guild.voiceAdapterCreator,
-        selfDeaf: true, // Deafen bot by default
+        selfDeaf: true,
       });
 
-      await interaction.reply({
-        content: `Joined **${voiceChannel.name}**!`,
-      });
+      await sendResponse(`Joined **${voiceChannel.name}**!`);
     } catch (error) {
       console.error('Error joining VC:', error);
-      await interaction.reply({
-        content: 'Failed to join the voice channel.',
-        ephemeral: true,
-      });
+      await sendResponse('Failed to join the voice channel.', true);
     }
   },
 };
