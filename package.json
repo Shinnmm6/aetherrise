@@ -11,6 +11,7 @@
     "db:studio": "prisma studio --schema=./database/schema.prisma"
   },
   "dependencies": {
+    "@discordjs/voice": "^0.19.2",
     "@prisma/client": "^5.22.0",
     "canvas": "^2.11.2",
     "chalk": "^4.1.2",
