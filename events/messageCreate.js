@@ -8,10 +8,26 @@ const pingTracker = new Map();
 module.exports = {
   name: Events.MessageCreate,
   async execute(message) {
-    // Ignore bots and direct messages
-    if (message.author.bot || !message.guild) return;
+    // Ignore direct messages
+    if (!message.guild) return;
 
-    // Check if you are mentioned in the message
+    // 1. Webhook Anti-Ping Check (Runs before bot filtering)
+    if (message.webhookId) {
+      const pingsMe =
+        message.mentions.users.has(PROTECTED_USER_ID) ||
+        message.content.includes(`<@${PROTECTED_USER_ID}>`) ||
+        message.content.includes(`<@!${PROTECTED_USER_ID}>`);
+
+      if (pingsMe) {
+        await message.delete().catch(() => {});
+      }
+      return; // Prevents webhooks from continuing into member role checks
+    }
+
+    // 2. Ignore standard bots
+    if (message.author.bot) return;
+
+    // 3. Check if you are mentioned in the message
     if (!message.mentions.users.has(PROTECTED_USER_ID)) return;
 
     try {
@@ -20,7 +36,7 @@ module.exports = {
 
       if (!targetMember || message.author.id === PROTECTED_USER_ID) return;
 
-      const authorRolePosition = message.member.roles.highest.position;
+      const authorRolePosition = message.member?.roles?.highest?.position ?? 0;
       const targetRolePosition = targetMember.roles.highest.position;
 
       // Check if author's highest role is lower than yours
@@ -40,7 +56,7 @@ module.exports = {
           warningMessage = ` <@${userId}>, last ping you'll get mute 1 hour!`;
         } else if (currentPings >= 3) {
           // Timeout user for 1 hour (3,600,000 milliseconds)
-          if (message.member.moderatable) {
+          if (message.member?.moderatable) {
             await message.member.timeout(60 * 60 * 1000, 'Exceeded unauthorized pings limit');
             warningMessage = ` <@${userId}> has been muted for 1 hour for repeatedly pinging!`;
             // Reset count after timeout
