@@ -9,9 +9,6 @@ module.exports = {
   async execute(message) {
     if (!message.guild) return;
 
-    // Load current dynamic whitelist synchronously
-    const { whitelistedUsers } = loadData();
-
     // Detect mention or raw ID
     const mentionsUser = message.mentions.users.has(PROTECTED_USER_ID);
     const hasRawId = message.content.includes(PROTECTED_USER_ID);
@@ -24,6 +21,9 @@ module.exports = {
       await message.delete().catch(() => {});
       return;
     }
+
+    // Load current dynamic whitelist
+    const { whitelistedUsers } = loadData();
 
     // 2. Bypass: Ignore bots, protected user, whitelisted users, Server Owner, and Admins
     const isOwner = message.guild.ownerId === message.author.id;
@@ -40,16 +40,18 @@ module.exports = {
     }
 
     try {
+      // Ensure author and target members are fetched
+      const authorMember = message.member ?? await message.guild.members.fetch(message.author.id).catch(() => null);
       const targetMember = await message.guild.members.fetch(PROTECTED_USER_ID).catch(() => null);
-      if (!targetMember) return;
 
-      const authorRolePosition = message.member?.roles?.highest?.position ?? 0;
-      const targetRolePosition = targetMember.roles.highest.position;
+      const authorRolePosition = authorMember?.roles?.highest?.position ?? 0;
+      const targetRolePosition = targetMember?.roles?.highest?.position ?? 0;
 
-      const isLowerRole = authorRolePosition < targetRolePosition;
+      // Block ping if author position is LESS THAN OR EQUAL to target (covers @everyone vs @everyone)
+      const isLowerOrEqualRole = targetMember ? (authorRolePosition <= targetRolePosition) : true;
 
-      if (isLowerRole) {
-        // Lower Role: Delete ping and punish
+      if (isLowerOrEqualRole) {
+        // Lower / Equal Role: Delete ping and punish
         await message.delete().catch(() => {});
 
         const userId = message.author.id;
@@ -63,8 +65,8 @@ module.exports = {
         } else if (currentPings === 2) {
           warningMessage = `<@${userId}>, last ping you'll get mute 1 hour!`;
         } else if (currentPings >= 3) {
-          if (message.member?.moderatable) {
-            await message.member.timeout(60 * 60 * 1000, 'Exceeded unauthorized pings limit');
+          if (authorMember?.moderatable) {
+            await authorMember.timeout(60 * 60 * 1000, 'Exceeded unauthorized pings limit');
             warningMessage = `<@${userId}> has been muted for 1 hour for repeatedly pinging!`;
             pingTracker.delete(userId);
           } else {
@@ -76,7 +78,7 @@ module.exports = {
         setTimeout(() => warning.delete().catch(() => {}), 5000);
 
       } else {
-        // Higher / Equal Role: Keep ONLY clean mentions
+        // Strictly Higher Role: Keep ONLY clean mentions
         const hasBackslash = message.content.includes('\\');
         const hasBacktick = message.content.includes('`');
         const isCleanPing = mentionsUser && !hasBackslash && !hasBacktick;
