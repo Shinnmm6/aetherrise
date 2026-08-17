@@ -16,43 +16,43 @@ module.exports = {
 
     if (!pingsMe) return;
 
+    console.log(`\n[AntiPing Debug] Ping detected from: ${message.author.tag} (${message.author.id})`);
+
     // 1. Webhooks: Always delete
     if (message.webhookId) {
       await message.delete().catch(() => {});
       return;
     }
 
-    // Load current dynamic whitelist
+    // Load dynamic whitelist
     const { whitelistedUsers } = loadData();
 
-    // 2. Bypass: Ignore bots, protected user, whitelisted users, Server Owner, and Admins
+    // 2. Check Bypass Conditions
     const isOwner = message.guild.ownerId === message.author.id;
     const isAdmin = message.member?.permissions?.has(PermissionFlagsBits.Administrator);
+    const isWhitelisted = whitelistedUsers.includes(message.author.id);
+    const isSelf = message.author.id === PROTECTED_USER_ID;
 
-    if (
-      message.author.bot ||
-      message.author.id === PROTECTED_USER_ID ||
-      whitelistedUsers.includes(message.author.id) ||
-      isOwner ||
-      isAdmin
-    ) {
+    if (message.author.bot || isSelf || isWhitelisted || isOwner || isAdmin) {
+      console.log(`[AntiPing Debug] BYPASSED - Bot: ${message.author.bot} | Self: ${isSelf} | Whitelisted: ${isWhitelisted} | Owner: ${isOwner} | Admin: ${isAdmin}`);
       return;
     }
 
     try {
-      // Ensure author and target members are fetched
       const authorMember = message.member ?? await message.guild.members.fetch(message.author.id).catch(() => null);
       const targetMember = await message.guild.members.fetch(PROTECTED_USER_ID).catch(() => null);
 
       const authorRolePosition = authorMember?.roles?.highest?.position ?? 0;
       const targetRolePosition = targetMember?.roles?.highest?.position ?? 0;
 
-      // Block ping if author position is LESS THAN OR EQUAL to target (covers @everyone vs @everyone)
+      console.log(`[AntiPing Debug] Role Positions -> Alt: ${authorRolePosition} | Protected User: ${targetRolePosition}`);
+
       const isLowerOrEqualRole = targetMember ? (authorRolePosition <= targetRolePosition) : true;
 
       if (isLowerOrEqualRole) {
-        // Lower / Equal Role: Delete ping and punish
-        await message.delete().catch(() => {});
+        console.log(`[AntiPing Debug] Action: DELETING message from ${message.author.tag}`);
+        
+        await message.delete().catch(err => console.error('[AntiPing Error] Failed to delete message:', err.message));
 
         const userId = message.author.id;
         const currentPings = (pingTracker.get(userId) || 0) + 1;
@@ -66,7 +66,7 @@ module.exports = {
           warningMessage = `<@${userId}>, last ping you'll get mute 1 hour!`;
         } else if (currentPings >= 3) {
           if (authorMember?.moderatable) {
-            await authorMember.timeout(60 * 60 * 1000, 'Exceeded unauthorized pings limit');
+            await authorMember.timeout(60 * 60 * 1000, 'Exceeded unauthorized pings limit').catch(err => console.error('[AntiPing Error] Timeout failed:', err.message));
             warningMessage = `<@${userId}> has been muted for 1 hour for repeatedly pinging!`;
             pingTracker.delete(userId);
           } else {
@@ -74,21 +74,21 @@ module.exports = {
           }
         }
 
-        const warning = await message.channel.send(warningMessage);
-        setTimeout(() => warning.delete().catch(() => {}), 5000);
+        const warning = await message.channel.send(warningMessage).catch(() => {});
+        if (warning) setTimeout(() => warning.delete().catch(() => {}), 5000);
 
       } else {
-        // Strictly Higher Role: Keep ONLY clean mentions
         const hasBackslash = message.content.includes('\\');
         const hasBacktick = message.content.includes('`');
         const isCleanPing = mentionsUser && !hasBackslash && !hasBacktick;
 
         if (!isCleanPing) {
-          await message.delete().catch(() => {});
+          console.log(`[AntiPing Debug] Higher role dirty ping. Deleting.`);
+          await message.delete().catch(err => console.error('[AntiPing Error] Failed to delete dirty ping:', err.message));
         }
       }
     } catch (error) {
-      console.error('Anti-ping error:', error);
+      console.error('[AntiPing Exception]:', error);
     }
   },
 };
