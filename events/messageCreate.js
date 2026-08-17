@@ -1,4 +1,4 @@
-const { Events } = require('discord.js');
+const { Events, PermissionFlagsBits } = require('discord.js');
 const { loadData } = require('../utils/antipingStore');
 
 const PROTECTED_USER_ID = '1181235979286237264';
@@ -12,7 +12,7 @@ module.exports = {
     // Load current dynamic whitelist
     const { whitelistedUsers } = loadData();
 
-    // Detect any form of mention or raw ID presence
+    // Detect mention or raw ID
     const mentionsUser = message.mentions.users.has(PROTECTED_USER_ID);
     const hasRawId = message.content.includes(PROTECTED_USER_ID);
     const pingsMe = mentionsUser || hasRawId;
@@ -25,11 +25,16 @@ module.exports = {
       return;
     }
 
-    // 2. Ignore standard bots, protected user, and whitelisted users
+    // 2. Bypass: Ignore bots, protected user, whitelisted users, Server Owner, and Admins
+    const isOwner = message.guild.ownerId === message.author.id;
+    const isAdmin = message.member?.permissions.has(PermissionFlagsBits.Administrator);
+
     if (
       message.author.bot ||
       message.author.id === PROTECTED_USER_ID ||
-      whitelistedUsers.includes(message.author.id)
+      whitelistedUsers.includes(message.author.id) ||
+      isOwner ||
+      isAdmin
     ) {
       return;
     }
@@ -44,7 +49,7 @@ module.exports = {
       const isLowerRole = authorRolePosition < targetRolePosition;
 
       if (isLowerRole) {
-        // Lower Role: Delete ALL pings (normal, escaped, or raw ID) and punish
+        // Lower Role: Delete ping and track offenses
         await message.delete().catch(() => {});
 
         const userId = message.author.id;
@@ -71,7 +76,7 @@ module.exports = {
         setTimeout(() => warning.delete().catch(() => {}), 5000);
 
       } else {
-        // Higher / Equal Role: Keep ONLY clean mentions.
+        // Higher / Equal Role: Keep ONLY clean mentions
         const hasBackslash = message.content.includes('\\');
         const hasBacktick = message.content.includes('`');
         const isCleanPing = mentionsUser && !hasBackslash && !hasBacktick;
