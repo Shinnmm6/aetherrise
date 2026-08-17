@@ -1,8 +1,8 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { loadData, saveData } = require('../../utils/antipingStore');
 
-// Only these IDs can run /admin antiping commands
-const PERMITTED_IDS = ['1181235979286237264'];
+// Only these Discord User IDs can execute /antiping subcommands
+const PERMITTED_IDS = ['1181235979286237264', '912889328814940201'];
 
 module.exports = {
   data: new SlashCommandBuilder()
