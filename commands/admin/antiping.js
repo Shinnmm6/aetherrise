@@ -36,7 +36,7 @@ module.exports = {
   async execute(interaction) {
     if (!PERMITTED_IDS.includes(interaction.user.id)) {
       return safeReply(interaction, {
-        content: '❌ You do not have permission to modify anti-ping settings.',
+        content: ' You do not have permission to modify anti-ping settings.',
         ephemeral: true,
       });
     }
@@ -48,12 +48,12 @@ module.exports = {
       const user = interaction.options.getUser('user');
       
       if (data.whitelistedUsers.includes(user.id)) {
-        return safeReply(interaction, { content: `⚠️ <@${user.id}> is already whitelisted.`, ephemeral: true });
+        return safeReply(interaction, { content: ` <@${user.id}> is already whitelisted.`, ephemeral: true });
       }
 
       data.whitelistedUsers.push(user.id);
       saveData(data);
-      return safeReply(interaction, { content: `✅ Successfully whitelisted <@${user.id}>.`, ephemeral: true });
+      return safeReply(interaction, { content: ` Successfully whitelisted <@${user.id}>.`, ephemeral: true });
     }
 
     if (subcommand === 'remove') {
