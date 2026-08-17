@@ -60,20 +60,20 @@ module.exports = {
       const user = interaction.options.getUser('user');
 
       if (!data.whitelistedUsers.includes(user.id)) {
-        return safeReply(interaction, { content: `⚠️ <@${user.id}> is not in the whitelist.`, ephemeral: true });
+        return safeReply(interaction, { content: ` <@${user.id}> is not in the whitelist.`, ephemeral: true });
       }
 
       data.whitelistedUsers = data.whitelistedUsers.filter(id => id !== user.id);
       saveData(data);
-      return safeReply(interaction, { content: `🗑️ Removed <@${user.id}> from the whitelist.`, ephemeral: true });
+      return safeReply(interaction, { content: ` Removed <@${user.id}> from the whitelist.`, ephemeral: true });
     }
 
     if (subcommand === 'list') {
       if (data.whitelistedUsers.length === 0) {
-        return safeReply(interaction, { content: '📜 Whitelist is currently empty.', ephemeral: true });
+        return safeReply(interaction, { content: ' Whitelist is currently empty.', ephemeral: true });
       }
       const list = data.whitelistedUsers.map(id => `• <@${id}> (\`${id}\`)`).join('\n');
-      return safeReply(interaction, { content: `📜 **Whitelisted Users:**\n${list}`, ephemeral: true });
+      return safeReply(interaction, { content: ` **Whitelisted Users:**\n${list}`, ephemeral: true });
     }
   },
 };
