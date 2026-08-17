@@ -9,8 +9,8 @@ module.exports = {
   async execute(message) {
     if (!message.guild) return;
 
-    // Fetch dynamic whitelist from MongoDB
-    const { whitelistedUsers } = await loadData();
+    // Load current dynamic whitelist synchronously
+    const { whitelistedUsers } = loadData();
 
     // Detect mention or raw ID
     const mentionsUser = message.mentions.users.has(PROTECTED_USER_ID);

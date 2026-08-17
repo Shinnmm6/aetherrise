@@ -1,45 +1,39 @@
-const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
 
-const antipingSchema = new mongoose.Schema({
-  guildId: { type: String, default: 'global', unique: true },
-  whitelistedUsers: { 
-    type: [String], 
-    default: ['1181235979286237264', '912889328814940201', '1281981381995663432'] 
-  }
-});
+const filePath = path.join(__dirname, '../data/antiping.json');
 
-const AntiPing = mongoose.models.AntiPing || mongoose.model('AntiPing', antipingSchema);
+// Default whitelisted IDs (add your alt account ID here directly)
+const DEFAULT_WHITELIST = [
+  '1181235979286237264',
+  '912889328814940201',
+  '1281981381995663432'
+  // 'YOUR_ALT_ACCOUNT_ID_HERE'
+];
 
-async function loadData() {
+function loadData() {
   try {
-    let config = await AntiPing.findOne({ guildId: 'global' });
-    if (!config) {
-      config = await AntiPing.create({
-        guildId: 'global',
-        whitelistedUsers: ['1181235979286237264', '912889328814940201', '1281981381995663432']
-      });
+    if (!fs.existsSync(filePath)) {
+      const defaultData = { whitelistedUsers: DEFAULT_WHITELIST };
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      fs.writeFileSync(filePath, JSON.stringify(defaultData, null, 2));
+      return defaultData;
     }
-    return config;
+    const data = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(data);
   } catch (error) {
-    console.error('Error loading antiping data from DB:', error);
-    return { whitelistedUsers: ['1181235979286237264', '912889328814940201', '1281981381995663432'] };
+    console.error('Error loading antiping data:', error);
+    return { whitelistedUsers: DEFAULT_WHITELIST };
   }
 }
 
-async function addWhitelist(userId) {
-  const config = await loadData();
-  if (!config.whitelistedUsers.includes(userId)) {
-    config.whitelistedUsers.push(userId);
-    if (config.save) await config.save();
+function saveData(data) {
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Error saving antiping data:', error);
   }
-  return config;
 }
 
-async function removeWhitelist(userId) {
-  const config = await loadData();
-  config.whitelistedUsers = config.whitelistedUsers.filter(id => id !== userId);
-  if (config.save) await config.save();
-  return config;
-}
-
-module.exports = { loadData, addWhitelist, removeWhitelist };
+module.exports = { loadData, saveData };

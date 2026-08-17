@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { loadData, addWhitelist, removeWhitelist } = require('../../utils/antipingStore');
+const { loadData, saveData } = require('../../utils/antipingStore');
 
 const PERMITTED_IDS = ['1181235979286237264', '912889328814940201'];
 
@@ -42,37 +42,37 @@ module.exports = {
     }
 
     const subcommand = interaction.options.getSubcommand();
+    const data = loadData();
 
     if (subcommand === 'add') {
       const user = interaction.options.getUser('user');
-      const config = await loadData();
       
-      if (config.whitelistedUsers.includes(user.id)) {
+      if (data.whitelistedUsers.includes(user.id)) {
         return safeReply(interaction, { content: `⚠️ <@${user.id}> is already whitelisted.`, ephemeral: true });
       }
 
-      await addWhitelist(user.id);
+      data.whitelistedUsers.push(user.id);
+      saveData(data);
       return safeReply(interaction, { content: `✅ Successfully whitelisted <@${user.id}>.`, ephemeral: true });
     }
 
     if (subcommand === 'remove') {
       const user = interaction.options.getUser('user');
-      const config = await loadData();
 
-      if (!config.whitelistedUsers.includes(user.id)) {
+      if (!data.whitelistedUsers.includes(user.id)) {
         return safeReply(interaction, { content: `⚠️ <@${user.id}> is not in the whitelist.`, ephemeral: true });
       }
 
-      await removeWhitelist(user.id);
+      data.whitelistedUsers = data.whitelistedUsers.filter(id => id !== user.id);
+      saveData(data);
       return safeReply(interaction, { content: `🗑️ Removed <@${user.id}> from the whitelist.`, ephemeral: true });
     }
 
     if (subcommand === 'list') {
-      const config = await loadData();
-      if (config.whitelistedUsers.length === 0) {
+      if (data.whitelistedUsers.length === 0) {
         return safeReply(interaction, { content: '📜 Whitelist is currently empty.', ephemeral: true });
       }
-      const list = config.whitelistedUsers.map(id => `• <@${id}> (\`${id}\`)`).join('\n');
+      const list = data.whitelistedUsers.map(id => `• <@${id}> (\`${id}\`)`).join('\n');
       return safeReply(interaction, { content: `📜 **Whitelisted Users:**\n${list}`, ephemeral: true });
     }
   },
