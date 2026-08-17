@@ -1,10 +1,8 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { loadData, saveData } = require('../../utils/antipingStore');
+const { loadData, addWhitelist, removeWhitelist } = require('../../utils/antipingStore');
 
-// Permitted Discord User IDs
 const PERMITTED_IDS = ['1181235979286237264', '912889328814940201'];
 
-// Helper function to safely respond whether deferred or not
 async function safeReply(interaction, options) {
   if (interaction.deferred || interaction.replied) {
     return await interaction.editReply(options);
@@ -36,7 +34,6 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    // Permission check
     if (!PERMITTED_IDS.includes(interaction.user.id)) {
       return safeReply(interaction, {
         content: '❌ You do not have permission to modify anti-ping settings.',
@@ -45,29 +42,33 @@ module.exports = {
     }
 
     const subcommand = interaction.options.getSubcommand();
-    const config = loadData();
 
     if (subcommand === 'add') {
       const user = interaction.options.getUser('user');
+      const config = await loadData();
+      
       if (config.whitelistedUsers.includes(user.id)) {
         return safeReply(interaction, { content: `⚠️ <@${user.id}> is already whitelisted.`, ephemeral: true });
       }
-      config.whitelistedUsers.push(user.id);
-      saveData(config);
+
+      await addWhitelist(user.id);
       return safeReply(interaction, { content: `✅ Successfully whitelisted <@${user.id}>.`, ephemeral: true });
     }
 
     if (subcommand === 'remove') {
       const user = interaction.options.getUser('user');
+      const config = await loadData();
+
       if (!config.whitelistedUsers.includes(user.id)) {
         return safeReply(interaction, { content: `⚠️ <@${user.id}> is not in the whitelist.`, ephemeral: true });
       }
-      config.whitelistedUsers = config.whitelistedUsers.filter(id => id !== user.id);
-      saveData(config);
+
+      await removeWhitelist(user.id);
       return safeReply(interaction, { content: `🗑️ Removed <@${user.id}> from the whitelist.`, ephemeral: true });
     }
 
     if (subcommand === 'list') {
+      const config = await loadData();
       if (config.whitelistedUsers.length === 0) {
         return safeReply(interaction, { content: '📜 Whitelist is currently empty.', ephemeral: true });
       }

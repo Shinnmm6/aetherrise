@@ -9,8 +9,8 @@ module.exports = {
   async execute(message) {
     if (!message.guild) return;
 
-    // Load current dynamic whitelist
-    const { whitelistedUsers } = loadData();
+    // Fetch dynamic whitelist from MongoDB
+    const { whitelistedUsers } = await loadData();
 
     // Detect mention or raw ID
     const mentionsUser = message.mentions.users.has(PROTECTED_USER_ID);
@@ -27,7 +27,7 @@ module.exports = {
 
     // 2. Bypass: Ignore bots, protected user, whitelisted users, Server Owner, and Admins
     const isOwner = message.guild.ownerId === message.author.id;
-    const isAdmin = message.member?.permissions.has(PermissionFlagsBits.Administrator);
+    const isAdmin = message.member?.permissions?.has(PermissionFlagsBits.Administrator);
 
     if (
       message.author.bot ||
@@ -49,7 +49,7 @@ module.exports = {
       const isLowerRole = authorRolePosition < targetRolePosition;
 
       if (isLowerRole) {
-        // Lower Role: Delete ping and track offenses
+        // Lower Role: Delete ping and punish
         await message.delete().catch(() => {});
 
         const userId = message.author.id;
