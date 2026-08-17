@@ -1,15 +1,16 @@
 const { Events } = require('discord.js');
+const { loadData } = require('../utils/antipingStore');
 
 const PROTECTED_USER_ID = '1181235979286237264';
-// Add any user IDs here that are allowed to ping you freely
-const WHITELISTED_USERS = ['1281981381995663432'];
-
 const pingTracker = new Map();
 
 module.exports = {
   name: Events.MessageCreate,
   async execute(message) {
     if (!message.guild) return;
+
+    // Load current dynamic whitelist
+    const { whitelistedUsers } = loadData();
 
     // Detect any form of mention or raw ID presence
     const mentionsUser = message.mentions.users.has(PROTECTED_USER_ID);
@@ -24,11 +25,11 @@ module.exports = {
       return;
     }
 
-    // 2. Ignore standard bots, your own messages, and whitelisted users
+    // 2. Ignore standard bots, protected user, and whitelisted users
     if (
       message.author.bot ||
       message.author.id === PROTECTED_USER_ID ||
-      WHITELISTED_USERS.includes(message.author.id)
+      whitelistedUsers.includes(message.author.id)
     ) {
       return;
     }
@@ -71,7 +72,6 @@ module.exports = {
 
       } else {
         // Higher / Equal Role: Keep ONLY clean mentions.
-        // Delete if formatted with backslashes, backticks, or raw unparsed IDs.
         const hasBackslash = message.content.includes('\\');
         const hasBacktick = message.content.includes('`');
         const isCleanPing = mentionsUser && !hasBackslash && !hasBacktick;
