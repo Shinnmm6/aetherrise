@@ -27,7 +27,6 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    // Only defer if interactionCreate.js hasn't already deferred or replied
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ ephemeral: true }).catch(() => {});
     }
@@ -63,13 +62,14 @@ module.exports = {
       )
       .setTimestamp();
 
+      // Display image directly inside the embed if it's an image file
       if (attachment.contentType?.startsWith('image/')) {
         embed.setImage(attachment.url);
       }
 
+      // Send only the embed message to avoid posting raw separate attachments
       await channel.send({
         embeds: [embed],
-        files: [attachment.url],
       });
 
       await interaction.editReply({
