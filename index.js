@@ -75,14 +75,14 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
-    // 2. AI Chat Integration
+    // 2. AI Chat Integration (Using Llama 3.1 8B Instant)
     if (openai && message.mentions.has(client.user)) {
         const cleanPrompt = message.content.replace(/<@!?\d+>/g, '').trim();
         if (cleanPrompt) {
             try {
                 await message.channel.sendTyping();
                 const response = await openai.chat.completions.create({
-                    model: 'llama3-70b-8192',
+                    model: 'llama-3.1-8b-instant',
                     messages: [
                         { role: 'system', content: 'You are AetherRise, the official RPG game and utility assistant bot. Keep answers concise, helpful, and gamer-oriented.' },
                         { role: 'user', content: cleanPrompt }
