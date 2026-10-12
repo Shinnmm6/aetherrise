@@ -44,6 +44,13 @@ const openai = GROQ_API_KEY ? new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
 }) : null;
 
+// Primary model and fallback list to ensure 100% uptime
+const AI_MODELS = [
+  process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+  'mixtral-8x7b-32768',
+  'gemma2-9b-it'
+];
+
 // Channel IDs & Configs
 const REPORTS_CHANNEL_ID = process.env.REPORTS_CHANNEL_ID || '1543934020843474995';
 const SUGGESTIONS_CHANNEL_ID = process.env.SUGGESTIONS_CHANNEL_ID || REPORTS_CHANNEL_ID;
@@ -75,24 +82,33 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
-    // 2. AI Chat Integration (Using Llama 3.1 8B Instant)
+    // 2. AI Chat Integration with Model Fallback Execution
     if (openai && message.mentions.has(client.user)) {
         const cleanPrompt = message.content.replace(/<@!?\d+>/g, '').trim();
         if (cleanPrompt) {
-            try {
-                await message.channel.sendTyping();
-                const response = await openai.chat.completions.create({
-                    model: 'llama-3.1-8b-instant',
-                    messages: [
-                        { role: 'system', content: 'You are AetherRise, the official RPG game and utility assistant bot. Keep answers concise, helpful, and gamer-oriented.' },
-                        { role: 'user', content: cleanPrompt }
-                    ],
-                    max_tokens: 300,
-                });
-                const aiReply = response.choices[0]?.message?.content || 'I lost my train of thought!';
+            await message.channel.sendTyping();
+            let aiReply = null;
+
+            for (const modelCandidate of AI_MODELS) {
+                try {
+                    const response = await openai.chat.completions.create({
+                        model: modelCandidate,
+                        messages: [
+                            { role: 'system', content: 'You are AetherRise, the official RPG game and utility assistant bot. Keep answers concise, helpful, and gamer-oriented.' },
+                            { role: 'user', content: cleanPrompt }
+                        ],
+                        max_tokens: 300,
+                    });
+                    aiReply = response.choices[0]?.message?.content;
+                    if (aiReply) break; // Break loop if successfully generated response
+                } catch (err) {
+                    console.warn(`Model ${modelCandidate} failed: ${err.message}. Trying next fallback...`);
+                }
+            }
+
+            if (aiReply) {
                 return await message.reply(aiReply);
-            } catch (err) {
-                console.error('AI error:', err);
+            } else {
                 return await message.reply('⚠️ Sorry, I ran into an error generating a response.');
             }
         }
