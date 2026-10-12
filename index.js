@@ -37,7 +37,7 @@ client.activeBattles = new Map();
 client.activeDungeons = new Map();
 client.globalBoss = null;
 
-// Groq AI client setup (Free API key)
+// Groq AI client setup
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const openai = GROQ_API_KEY ? new OpenAI({
   apiKey: GROQ_API_KEY,
@@ -61,7 +61,7 @@ async function getPrefix(guildId) {
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild) return;
     
-    // 1. Anti-Link / Anti-Invite Filter (Bypasses for Admins/Mods)
+    // 1. Anti-Link / Anti-Invite Filter
     if (!message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) {
         if (ALL_LINKS_REGEX.test(message.content)) {
             try {
@@ -75,14 +75,14 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
 
-    // 2. AI Chat Integration (Triggers when bot is mentioned)
+    // 2. AI Chat Integration
     if (openai && message.mentions.has(client.user)) {
         const cleanPrompt = message.content.replace(/<@!?\d+>/g, '').trim();
         if (cleanPrompt) {
             try {
                 await message.channel.sendTyping();
                 const response = await openai.chat.completions.create({
-                    model: 'llama-3.3-70b-versatile',
+                    model: 'llama3-70b-8192',
                     messages: [
                         { role: 'system', content: 'You are AetherRise, the official RPG game and utility assistant bot. Keep answers concise, helpful, and gamer-oriented.' },
                         { role: 'user', content: cleanPrompt }
@@ -129,7 +129,7 @@ client.on(Events.MessageCreate, async (message) => {
     await handleRandomReply(message);
 });
 
-// Interaction Handlers for Panels & Modals (/setup-reporter & /setup-suggestion)
+// Interaction Handlers for Panels & Modals
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
     if (interaction.commandName === 'setup-reporter') {
