@@ -82,7 +82,7 @@ client.on(Events.MessageCreate, async (message) => {
             try {
                 await message.channel.sendTyping();
                 const response = await openai.chat.completions.create({
-                    model: 'llama-3.1-70b-versatile',
+                    model: 'llama-3.3-70b-versatile',
                     messages: [
                         { role: 'system', content: 'You are AetherRise, the official RPG game and utility assistant bot. Keep answers concise, helpful, and gamer-oriented.' },
                         { role: 'user', content: cleanPrompt }
