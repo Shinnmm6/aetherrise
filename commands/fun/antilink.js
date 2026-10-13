@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { prisma } = require('../../database/client');
 const crypto = require('crypto');
 
@@ -20,8 +20,9 @@ module.exports = {
 
   async execute(interaction) {
     if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-      return await interaction.editReply({
+      return await interaction.reply({
         content: 'You need **Manage Server** permissions to use this command.',
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -30,13 +31,13 @@ module.exports = {
     const generatedId = crypto.randomUUID();
 
     try {
-      // 1. Ensure the column exists
+      // 1. Ensure the settings table column exists
       await prisma.$executeRaw`
         ALTER TABLE "settings" 
         ADD COLUMN IF NOT EXISTS "antiLinkEnabled" BOOLEAN DEFAULT true;
       `.catch(() => {});
 
-      // 2. Perform raw SQL UPSERT with a generated ID to prevent null constraint errors
+      // 2. Upsert the setting into the database using raw SQL
       await prisma.$executeRaw`
         INSERT INTO "settings" ("id", "guildId", "prefix", "antiLinkEnabled")
         VALUES (${generatedId}, ${interaction.guild.id}, '!', ${enable})
@@ -44,13 +45,15 @@ module.exports = {
         DO UPDATE SET "antiLinkEnabled" = ${enable};
       `;
 
-      return await interaction.editReply({
+      return await interaction.reply({
         content: `Anti-link protection has been turned **${enable ? 'ON' : 'OFF'}** for this server.`,
+        flags: MessageFlags.Ephemeral,
       });
     } catch (error) {
       console.error('Antilink database error:', error);
-      return await interaction.editReply({
+      return await interaction.reply({
         content: 'Failed to update anti-link settings in the database.',
+        flags: MessageFlags.Ephemeral,
       });
     }
   },
