@@ -19,11 +19,18 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    // Smart helper to prevent both InteractionAlreadyReplied and InteractionNotReplied errors
+    const sendResponse = async (content, ephemeral = true) => {
+      const options = { content, flags: ephemeral ? MessageFlags.Ephemeral : undefined };
+      if (interaction.deferred || interaction.replied) {
+        return await interaction.editReply(options);
+      } else {
+        return await interaction.reply(options);
+      }
+    };
+
     if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-      return await interaction.reply({
-        content: 'You need **Manage Server** permissions to use this command.',
-        flags: MessageFlags.Ephemeral,
-      });
+      return await sendResponse('You need **Manage Server** permissions to use this command.');
     }
 
     const status = interaction.options.getString('status');
@@ -45,16 +52,10 @@ module.exports = {
         DO UPDATE SET "antiLinkEnabled" = ${enable};
       `;
 
-      return await interaction.reply({
-        content: `Anti-link protection has been turned **${enable ? 'ON' : 'OFF'}** for this server.`,
-        flags: MessageFlags.Ephemeral,
-      });
+      return await sendResponse(`Anti-link protection has been turned **${enable ? 'ON' : 'OFF'}** for this server.`);
     } catch (error) {
       console.error('Antilink database error:', error);
-      return await interaction.reply({
-        content: 'Failed to update anti-link settings in the database.',
-        flags: MessageFlags.Ephemeral,
-      });
+      return await sendResponse('Failed to update anti-link settings in the database.');
     }
   },
 };
