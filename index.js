@@ -13,7 +13,7 @@ const {
   ButtonStyle,
   ModalBuilder,
   TextInputBuilder,
-  TextInputStyle,
+  TextInputStyle
 } = require('discord.js');
 
 const OpenAI = require('openai');
@@ -40,10 +40,7 @@ client.activeBattles = new Map();
 client.activeDungeons = new Map();
 client.globalBoss = null;
 
-// ========================================
-// GROQ AI CONFIGURATION
-// ========================================
-
+// Groq AI client setup
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const openai = GROQ_API_KEY
@@ -53,38 +50,23 @@ const openai = GROQ_API_KEY
     })
   : null;
 
-// Supported model candidates with automatic fallback.
-// Override the model list here if Groq changes availability.
+// Supported Groq models with fallback
 const AI_MODELS = [
   'openai/gpt-oss-20b',
   'openai/gpt-oss-120b',
 ];
 
-if (!GROQ_API_KEY) {
-  console.warn(
-    '⚠️ GROQ_API_KEY is missing. AI chat will be disabled.'
-  );
-}
-
-// ========================================
-// CHANNEL CONFIGURATION
-// ========================================
-
+// Channel IDs and configurations
 const REPORTS_CHANNEL_ID =
   process.env.REPORTS_CHANNEL_ID || '1543934020843474995';
 
 const SUGGESTIONS_CHANNEL_ID =
   process.env.SUGGESTIONS_CHANNEL_ID || REPORTS_CHANNEL_ID;
 
-const SOURCE_CHANNEL_ID = '1466400064913150158';
-const DESTINATION_CHANNEL_ID = '1516293358635716610';
+const XENO_CHANNEL_ID = '1557772782979387473';
 
 const ALL_LINKS_REGEX =
   /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(discord\.(gg|io|me|li)\/[^\s]+)/i;
-
-// ========================================
-// DATABASE PREFIX
-// ========================================
 
 async function getPrefix(guildId) {
   try {
@@ -95,27 +77,24 @@ async function getPrefix(guildId) {
       LIMIT 1
     `;
 
-    return settings?.length > 0 ? settings[0].prefix : '!';
+    return settings && settings.length > 0
+      ? settings[0].prefix
+      : '!';
   } catch (error) {
-    console.error('Failed to get prefix:', error.message);
     return '!';
   }
 }
 
-// ========================================
-// MESSAGE HANDLER
-// ========================================
+// ==================================================
+// MESSAGE CREATE HANDLER
+// ==================================================
 
 client.on(Events.MessageCreate, async (message) => {
   try {
     if (message.author.bot || !message.guild) return;
 
-    // 1. Anti-link and anti-invite filter
-    if (
-      !message.member?.permissions.has(
-        PermissionFlagsBits.ManageMessages
-      )
-    ) {
+    // 1. Anti-link / anti-invite filter
+    if (!message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) {
       if (ALL_LINKS_REGEX.test(message.content)) {
         try {
           await message.delete();
@@ -135,129 +114,158 @@ client.on(Events.MessageCreate, async (message) => {
       }
     }
 
-    // 2. AI chat integration
-    if (openai && client.user && message.mentions.has(client.user)) {
+    // 2. CUSTOM XENO RESPONSE
+    // Only works in the configured channel when someone mentions the bot
+    // and their message contains the word "xeno".
+
+    if (
+      message.channel.id === XENO_CHANNEL_ID &&
+      message.mentions.has(client.user) &&
+      /\bxeno\b/i.test(message.content)
+    ) {
+      return await message.reply({
+        content: 'Xeno sucks, and its reputation is taking the L 🤡',
+        allowedMentions: {
+          repliedUser: false,
+        },
+      });
+    }
+
+    // 3. AI CHAT
+    // The bot answers when someone mentions it.
+    if (openai && message.mentions.has(client.user)) {
       const cleanPrompt = message.content
         .replace(/<@!?\d+>/g, '')
         .trim();
 
-      if (cleanPrompt) {
-        await message.channel.sendTyping();
-
-        let aiReply = null;
-
-        for (const modelCandidate of AI_MODELS) {
-          try {
-            const response = await openai.chat.completions.create({
-              model: modelCandidate,
-              messages: [
-                {
-                  role: 'system',
-                  content:
-                    'You are AetherRise, the official RPG game and utility assistant bot. Keep answers concise, helpful, and gamer-oriented.',
-                },
-                {
-                  role: 'user',
-                  content: cleanPrompt,
-                },
-              ],
-              max_tokens: 300,
-            });
-
-            aiReply =
-              response.choices?.[0]?.message?.content?.trim() || null;
-
-            if (aiReply) {
-              console.log(
-                `✅ AI response generated using ${modelCandidate}`
-              );
-              break;
-            }
-          } catch (error) {
-            console.warn(
-              `Model ${modelCandidate} failed: ${error.message}. Trying next fallback...`
-            );
-          }
-        }
-
-        if (aiReply) {
-          return await message.reply({
-            content: aiReply.slice(0, 2000),
-            allowedMentions: { repliedUser: false },
-          });
-        }
-
-        return await message.reply(
-          '⚠️ Sorry, I could not generate a response right now. Please try again later.'
-        );
+      if (!cleanPrompt) {
+        return await message.reply({
+          content: 'Hey! 👋 Ask me a question and I’ll try to help.',
+          allowedMentions: {
+            repliedUser: false,
+          },
+        });
       }
+
+      await message.channel.sendTyping();
+
+      let aiReply = null;
+
+      for (const modelCandidate of AI_MODELS) {
+        try {
+          const response = await openai.chat.completions.create({
+            model: modelCandidate,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are AetherRise, the official RPG game and utility assistant bot. Keep answers concise, helpful, and gamer-oriented.',
+              },
+              {
+                role: 'user',
+                content: cleanPrompt,
+              },
+            ],
+            max_tokens: 300,
+          });
+
+          aiReply = response.choices[0]?.message?.content;
+
+          if (aiReply) break;
+        } catch (err) {
+          console.warn(
+            `Model ${modelCandidate} failed: ${err.message}. Trying next fallback...`
+          );
+        }
+      }
+
+      if (aiReply) {
+        return await message.reply({
+          content: aiReply,
+          allowedMentions: {
+            repliedUser: false,
+          },
+        });
+      }
+
+      return await message.reply({
+        content: '⚠️ Sorry, I ran into an error generating a response.',
+        allowedMentions: {
+          repliedUser: false,
+        },
+      });
     }
 
-    // 3. Channel forwarding
+    // 4. CHANNEL FORWARDING
+
+    const SOURCE_CHANNEL_ID = '1466400064913150158';
+    const DESTINATION_CHANNEL_ID = '1516293358635716610';
+
     if (message.channel.id === SOURCE_CHANNEL_ID) {
       const destinationChannel =
         message.client.channels.cache.get(DESTINATION_CHANNEL_ID);
 
       if (destinationChannel) {
-        const content =
-          `**${message.author.username}**: ${message.content}`;
+        const content = `**${message.author.username}**: ${message.content}`;
 
-        await destinationChannel
-          .send({
-            content: content.slice(0, 2000),
-            files: message.attachments.map(
-              (attachment) => attachment.url
-            ),
-          })
-          .catch(console.error);
+        await destinationChannel.send({
+          content,
+          files: message.attachments.map((attachment) => attachment.url),
+        }).catch(console.error);
       }
     }
 
-    // 4. Existing prefix handling
+    // 5. PREFIX HANDLING
+
     const prefix = await getPrefix(message.guild.id);
 
     if (message.content.startsWith(prefix)) {
-      // Existing prefix command logic
+      // Prefix command logic
     }
 
-    // 5. Keyword replies
-    if (message.content.toLowerCase().includes('xeno')) {
-      await message.reply(
-        'Xeno is sucks and for dumb users like you'
-      );
-    }
+    // 6. EXISTING KEYWORD RESPONSE
 
     if (message.content.toLowerCase().includes('karunosob')) {
-      await message.reply(
-        'karunosob is femboy i sense it 100%'
-      );
+      await message.reply({
+        content: 'karunosob is femboy i sense it 100%',
+        allowedMentions: {
+          repliedUser: false,
+        },
+      });
     }
 
+    // 7. RANDOM REPLIES
+
     await handleRandomReply(message);
+
   } catch (error) {
-    console.error('Message handler error:', error);
+    console.error('MessageCreate handler error:', error);
   }
 });
 
-// ========================================
-// INTERACTION HANDLERS
-// ========================================
+// ==================================================
+// INTERACTION HANDLERS: SLASH COMMANDS, BUTTONS, MODALS
+// ==================================================
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    // Slash commands
+    // SLASH COMMANDS
+
     if (interaction.isChatInputCommand()) {
+      // REPORT PANEL
       if (interaction.commandName === 'setup-reporter') {
         const embed = new EmbedBuilder()
           .setTitle('🛡️ Developer Reporting Panel')
           .setDescription(
             'Welcome to the Server Reporter! Use the button below to submit structured reports directly to the developers.\n\n' +
-              '**Categories:**\n' +
-              '• **Exploiter:** Cheating, malicious scripts, or game exploits.\n' +
-              '• **Bugs:** Broken mechanics, map glitches, or gameplay bugs.'
+            '**Categories:**\n' +
+            '• **Exploiter:** Cheating, malicious scripts, or game exploits.\n' +
+            '• **Bugs:** Broken mechanics, map glitches, or gameplay bugs.'
           )
-          .setColor(0x0099ff)
-          .setFooter({ text: 'AetherRise Dev Tools' });
+          .setColor(0x0099FF)
+          .setFooter({
+            text: 'AetherRise Dev Tools',
+          });
 
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -274,19 +282,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
+      // SUGGESTION PANEL
       if (interaction.commandName === 'setup-suggestion') {
         const embed = new EmbedBuilder()
           .setTitle('💡 Player Suggestions Panel')
           .setDescription(
             'Have an idea to improve the game or server? Click the button below to submit your suggestion to the developers and community!\n\n' +
-              '**Guidelines:**\n' +
-              '• Be specific with your idea.\n' +
-              '• Explain why should we add it.\n' +
-              '• Keep suggestions good.\n' +
-              '• Must be 5 reacts'
+            '**Guidelines:**\n' +
+            '• Be specific with your idea.\n' +
+            '• Explain why we should add it.\n' +
+            '• Keep suggestions constructive.\n' +
+            '• Must be 5 reacts'
           )
-          .setColor(0x00ff7f)
-          .setFooter({ text: 'AetherRise Community Feedback' });
+          .setColor(0x00FF7F)
+          .setFooter({
+            text: 'AetherRise Community Feedback',
+          });
 
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -304,8 +315,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    // Buttons
+    // BUTTON INTERACTIONS
+
     if (interaction.isButton()) {
+      // CREATE REPORT BUTTON
       if (interaction.customId === 'create_report_btn') {
         const modal = new ModalBuilder()
           .setCustomId('report_modal')
@@ -321,18 +334,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const targetInput = new TextInputBuilder()
           .setCustomId('report_target')
           .setLabel('Game Username / Subject')
-          .setPlaceholder(
-            'Username of exploiter or system name of bug'
-          )
+          .setPlaceholder('Username of exploiter or system name of bug')
           .setStyle(TextInputStyle.Short)
           .setRequired(true);
 
         const detailsInput = new TextInputBuilder()
           .setCustomId('report_details')
           .setLabel('Description & Evidence Links')
-          .setPlaceholder(
-            'Provide a detailed description and video/image links...'
-          )
+          .setPlaceholder('Provide a detailed description and video/image links...')
           .setStyle(TextInputStyle.Paragraph)
           .setRequired(true);
 
@@ -346,6 +355,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
+      // CREATE SUGGESTION BUTTON
       if (interaction.customId === 'create_suggestion_btn') {
         const modal = new ModalBuilder()
           .setCustomId('suggestion_modal')
@@ -354,18 +364,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const titleInput = new TextInputBuilder()
           .setCustomId('suggestion_title')
           .setLabel('Suggestion Title')
-          .setPlaceholder(
-            'e.g., Add New Things, Rebalance Or Adjustment'
-          )
+          .setPlaceholder('e.g., Add New Things, Rebalance Or Adjustment')
           .setStyle(TextInputStyle.Short)
           .setRequired(true);
 
         const categoryInput = new TextInputBuilder()
           .setCustomId('suggestion_category')
           .setLabel('Category')
-          .setPlaceholder(
-            'e.g., Gameplay, UI, Economy, Cosmetics'
-          )
+          .setPlaceholder('e.g., Gameplay, UI, Economy, Cosmetics')
           .setStyle(TextInputStyle.Short)
           .setRequired(true);
 
@@ -389,27 +395,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-    // Modal submissions
+    // MODAL SUBMISSIONS
+
     if (interaction.isModalSubmit()) {
+      // REPORT SUBMISSION
       if (interaction.customId === 'report_modal') {
-        await interaction.deferReply({ ephemeral: true });
+        if (!interaction.deferred && !interaction.replied) {
+          await interaction.deferReply({
+            ephemeral: true,
+          }).catch(() => {});
+        }
 
         const category = interaction.fields
           .getTextInputValue('report_category')
           .trim();
 
         const target = interaction.fields
-          .getTextInputValue('report_target')
-          .trim();
+          .getTextInputValue('report_target');
 
         const details = interaction.fields
-          .getTextInputValue('report_details')
-          .trim();
+          .getTextInputValue('report_details');
 
-        const isExploiter =
-          category.toLowerCase().includes('exploit');
-
-        const embedColor = isExploiter ? 0xff0000 : 0xffa500;
+        const isExploiter = category.toLowerCase().includes('exploit');
+        const embedColor = isExploiter ? 0xFF0000 : 0xFFA500;
 
         const categoryTag = isExploiter
           ? '🚨 EXPLOITER REPORT'
@@ -420,59 +428,63 @@ client.on(Events.InteractionCreate, async (interaction) => {
             .fetch(REPORTS_CHANNEL_ID)
             .catch(() => null);
 
-          if (!channel || !channel.isTextBased()) {
+          if (!channel) {
             return await interaction.editReply({
               content: '❌ Developer report channel not found.',
             });
           }
 
           const reportEmbed = new EmbedBuilder()
-            .setTitle(`[${categoryTag}] ${target}`.slice(0, 256))
+            .setTitle(`[${categoryTag}] ${target}`)
             .setColor(embedColor)
             .addFields(
               {
                 name: 'Submitted By',
-                value:
-                  `${interaction.user.tag} (\`${interaction.user.id}\`)`,
+                value: `${interaction.user.tag} (\`${interaction.user.id}\`)`,
                 inline: true,
               },
               {
                 name: 'Target / Subject',
-                value: target.slice(0, 1024),
+                value: target,
                 inline: true,
               },
               {
                 name: 'Category',
-                value: category.slice(0, 1024),
+                value: category,
                 inline: true,
               },
               {
                 name: 'Description & Proof',
-                value: details.slice(0, 4000) || 'No details provided.',
+                value: details,
               }
             )
             .setTimestamp();
 
-          await channel.send({ embeds: [reportEmbed] });
+          await channel.send({
+            embeds: [reportEmbed],
+          });
 
           await interaction.editReply({
-            content:
-              '✅ Your report has been sent to the developers. Thank you!',
+            content: '✅ Your report has been sent to the developers. Thank you!',
           });
         } catch (error) {
           console.error('Report submission error:', error);
 
           await interaction.editReply({
-            content:
-              '❌ An error occurred while submitting your report.',
-          }).catch(() => {});
+            content: '❌ An error occurred while submitting your report.',
+          });
         }
 
         return;
       }
 
+      // SUGGESTION SUBMISSION
       if (interaction.customId === 'suggestion_modal') {
-        await interaction.deferReply({ ephemeral: true });
+        if (!interaction.deferred && !interaction.replied) {
+          await interaction.deferReply({
+            ephemeral: true,
+          }).catch(() => {});
+        }
 
         const title = interaction.fields
           .getTextInputValue('suggestion_title')
@@ -483,41 +495,36 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .trim();
 
         const details = interaction.fields
-          .getTextInputValue('suggestion_details')
-          .trim();
+          .getTextInputValue('suggestion_details');
 
         try {
           const channel = await interaction.client.channels
             .fetch(SUGGESTIONS_CHANNEL_ID)
             .catch(() => null);
 
-          if (!channel || !channel.isTextBased()) {
+          if (!channel) {
             return await interaction.editReply({
               content: '❌ Suggestions channel not found.',
             });
           }
 
           const suggestionEmbed = new EmbedBuilder()
-            .setTitle(
-              `💡 [${category.toUpperCase()}] ${title}`.slice(0, 256)
-            )
-            .setColor(0x00ff7f)
+            .setTitle(`💡 [${category.toUpperCase()}] ${title}`)
+            .setColor(0x00FF7F)
             .addFields(
               {
                 name: 'Suggested By',
-                value:
-                  `${interaction.user.tag} (\`${interaction.user.id}\`)`,
+                value: `${interaction.user.tag} (\`${interaction.user.id}\`)`,
                 inline: true,
               },
               {
                 name: 'Category',
-                value: category.slice(0, 1024),
+                value: category,
                 inline: true,
               },
               {
                 name: 'Details & Rationale',
-                value:
-                  details.slice(0, 4000) || 'No details provided.',
+                value: details,
               }
             )
             .setTimestamp()
@@ -533,48 +540,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
           await msg.react('👎');
 
           await interaction.editReply({
-            content:
-              '✅ Your suggestion has been submitted and posted for community voting!',
+            content: '✅ Your suggestion has been submitted and posted for community voting!',
           });
         } catch (error) {
           console.error('Suggestion submission error:', error);
 
           await interaction.editReply({
-            content:
-              '❌ An error occurred while submitting your suggestion.',
-          }).catch(() => {});
+            content: '❌ An error occurred while submitting your suggestion.',
+          });
         }
       }
     }
   } catch (error) {
-    console.error('Interaction handler error:', error);
-
-    if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: '❌ An unexpected error occurred.',
-        ephemeral: true,
-      }).catch(() => {});
-    }
+    console.error('InteractionCreate handler error:', error);
   }
 });
 
-// ========================================
+// ==================================================
 // START BOT
-// ========================================
+// ==================================================
 
 async function main() {
-  console.log(
-    chalk.magenta(`
+  console.log(chalk.magenta(`
   ╔═══════════════════════════════════════╗
   ║       ✨ AetherRise RPG Bot ✨         ║
   ║      The World Awakens Once More      ║
   ╚═══════════════════════════════════════╝
-  `)
-  );
-
-  if (!process.env.DISCORD_TOKEN) {
-    throw new Error('DISCORD_TOKEN is missing from the environment.');
-  }
+  `));
 
   await initDatabase();
   await initRedis();
@@ -582,17 +574,12 @@ async function main() {
   await loadEvents(client);
 
   setInterval(() => {
-    Promise.resolve(sendGhostMessage(client)).catch((error) => {
-      console.error('Ghost message error:', error);
-    });
+    sendGhostMessage(client);
   }, 60 * 60 * 1000);
 
-  await client.login(process.env.DISCORD_TOKEN);
+  client.login(process.env.DISCORD_TOKEN);
 }
 
-main().catch((error) => {
-  console.error('Failed to start AetherRise:', error);
-  process.exitCode = 1;
-});
+main().catch(console.error);
 
 module.exports = { client };
