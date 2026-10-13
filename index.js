@@ -134,9 +134,6 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     // 2. CUSTOM XENO RESPONSE
-    // Only works in the configured channel when someone mentions the bot
-    // and their message contains the word "xeno".
-
     if (
       message.channel.id === XENO_CHANNEL_ID &&
       message.mentions.has(client.user) &&
@@ -151,7 +148,6 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     // 3. AI CHAT
-    // The bot answers when someone mentions it.
     if (openai && message.mentions.has(client.user)) {
       const cleanPrompt = message.content
         .replace(/<@!?\d+>/g, '')
@@ -216,7 +212,6 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     // 4. CHANNEL FORWARDING
-
     const SOURCE_CHANNEL_ID = '1466400064913150158';
     const DESTINATION_CHANNEL_ID = '1516293358635716610';
 
@@ -235,7 +230,6 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     // 5. PREFIX HANDLING
-
     const prefix = await getPrefix(message.guild.id);
 
     if (message.content.startsWith(prefix)) {
@@ -243,7 +237,6 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     // 6. EXISTING KEYWORD RESPONSE
-
     if (message.content.toLowerCase().includes('karunosob')) {
       await message.reply({
         content: 'karunosob is femboy i sense it 100%',
@@ -254,7 +247,6 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     // 7. RANDOM REPLIES
-
     await handleRandomReply(message);
 
   } catch (error) {
@@ -263,15 +255,19 @@ client.on(Events.MessageCreate, async (message) => {
 });
 
 // ==================================================
-// INTERACTION HANDLERS: SLASH COMMANDS, BUTTONS, MODALS
+// INTERACTION HANDLERS: BUTTONS, MODALS, AND SLASH COMMANDS
 // ==================================================
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    // SLASH COMMANDS
-
+    // SLASH COMMANDS DELEGATION
     if (interaction.isChatInputCommand()) {
-      // REPORT PANEL
+      const command = client.commands.get(interaction.commandName);
+      if (command) {
+        return await command.execute(interaction);
+      }
+
+      // REPORT PANEL SETUP
       if (interaction.commandName === 'setup-reporter') {
         const embed = new EmbedBuilder()
           .setTitle('🛡️ Developer Reporting Panel')
@@ -282,9 +278,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             '• **Bugs:** Broken mechanics, map glitches, or gameplay bugs.'
           )
           .setColor(0x0099FF)
-          .setFooter({
-            text: 'AetherRise Dev Tools',
-          });
+          .setFooter({ text: 'AetherRise Dev Tools' });
 
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -293,15 +287,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
             .setStyle(ButtonStyle.Primary)
         );
 
-        await interaction.reply({
-          embeds: [embed],
-          components: [row],
-        });
-
-        return;
+        return await interaction.reply({ embeds: [embed], components: [row] });
       }
 
-      // SUGGESTION PANEL
+      // SUGGESTION PANEL SETUP
       if (interaction.commandName === 'setup-suggestion') {
         const embed = new EmbedBuilder()
           .setTitle('💡 Player Suggestions Panel')
@@ -314,9 +303,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             '• Must be 5 reacts'
           )
           .setColor(0x00FF7F)
-          .setFooter({
-            text: 'AetherRise Community Feedback',
-          });
+          .setFooter({ text: 'AetherRise Community Feedback' });
 
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -325,52 +312,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
             .setStyle(ButtonStyle.Success)
         );
 
-        await interaction.reply({
-          embeds: [embed],
-          components: [row],
-        });
-
-        return;
-      }
-
-      // ANTILINK TOGGLE COMMAND (/antilink on / off)
-      if (interaction.commandName === 'antilink') {
-        if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-          return await interaction.reply({
-            content: '❌ You need **Manage Server** permissions to use this command.',
-            ephemeral: true,
-          });
-        }
-
-        const status = interaction.options.getString('status'); // expected 'on' or 'off'
-        const enable = status === 'on';
-
-        try {
-          await prisma.$queryRaw`
-            INSERT INTO "settings" ("guildId", "antiLinkEnabled")
-            VALUES (${interaction.guild.id}, ${enable})
-            ON CONFLICT ("guildId")
-            DO UPDATE SET "antiLinkEnabled" = ${enable}
-          `;
-
-          return await interaction.reply({
-            content: `✅ Anti-link protection has been turned **${enable ? 'ON' : 'OFF'}** for this server.`,
-            ephemeral: true,
-          });
-        } catch (error) {
-          console.error('Antilink database error:', error);
-          return await interaction.reply({
-            content: '❌ Failed to update anti-link settings in the database.',
-            ephemeral: true,
-          });
-        }
+        return await interaction.reply({ embeds: [embed], components: [row] });
       }
     }
 
     // BUTTON INTERACTIONS
-
     if (interaction.isButton()) {
-      // CREATE REPORT BUTTON
       if (interaction.customId === 'create_report_btn') {
         const modal = new ModalBuilder()
           .setCustomId('report_modal')
@@ -407,7 +354,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
-      // CREATE SUGGESTION BUTTON
       if (interaction.customId === 'create_suggestion_btn') {
         const modal = new ModalBuilder()
           .setCustomId('suggestion_modal')
@@ -430,9 +376,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const detailsInput = new TextInputBuilder()
           .setCustomId('suggestion_details')
           .setLabel('Detailed Explanation & Rationale')
-          .setPlaceholder(
-            'Describe your idea in detail and explain why it should be added...'
-          )
+          .setPlaceholder('Describe your idea in detail and explain why it should be added...')
           .setStyle(TextInputStyle.Paragraph)
           .setRequired(true);
 
@@ -448,158 +392,83 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     // MODAL SUBMISSIONS
-
     if (interaction.isModalSubmit()) {
-      // REPORT SUBMISSION
       if (interaction.customId === 'report_modal') {
         if (!interaction.deferred && !interaction.replied) {
-          await interaction.deferReply({
-            ephemeral: true,
-          }).catch(() => {});
+          await interaction.deferReply({ ephemeral: true }).catch(() => {});
         }
 
-        const category = interaction.fields
-          .getTextInputValue('report_category')
-          .trim();
-
-        const target = interaction.fields
-          .getTextInputValue('report_target');
-
-        const details = interaction.fields
-          .getTextInputValue('report_details');
+        const category = interaction.fields.getTextInputValue('report_category').trim();
+        const target = interaction.fields.getTextInputValue('report_target');
+        const details = interaction.fields.getTextInputValue('report_details');
 
         const isExploiter = category.toLowerCase().includes('exploit');
         const embedColor = isExploiter ? 0xFF0000 : 0xFFA500;
-
-        const categoryTag = isExploiter
-          ? '🚨 EXPLOITER REPORT'
-          : '🐛 BUG REPORT';
+        const categoryTag = isExploiter ? '🚨 EXPLOITER REPORT' : '🐛 BUG REPORT';
 
         try {
-          const channel = await interaction.client.channels
-            .fetch(REPORTS_CHANNEL_ID)
-            .catch(() => null);
+          const channel = await interaction.client.channels.fetch(REPORTS_CHANNEL_ID).catch(() => null);
 
           if (!channel) {
-            return await interaction.editReply({
-              content: '❌ Developer report channel not found.',
-            });
+            return await interaction.editReply({ content: '❌ Developer report channel not found.' });
           }
 
           const reportEmbed = new EmbedBuilder()
             .setTitle(`[${categoryTag}] ${target}`)
             .setColor(embedColor)
             .addFields(
-              {
-                name: 'Submitted By',
-                value: `${interaction.user.tag} (\`${interaction.user.id}\`)`,
-                inline: true,
-              },
-              {
-                name: 'Target / Subject',
-                value: target,
-                inline: true,
-              },
-              {
-                name: 'Category',
-                value: category,
-                inline: true,
-              },
-              {
-                name: 'Description & Proof',
-                value: details,
-              }
+              { name: 'Submitted By', value: `${interaction.user.tag} (\`${interaction.user.id}\`)`, inline: true },
+              { name: 'Target / Subject', value: target, inline: true },
+              { name: 'Category', value: category, inline: true },
+              { name: 'Description & Proof', value: details }
             )
             .setTimestamp();
 
-          await channel.send({
-            embeds: [reportEmbed],
-          });
-
-          await interaction.editReply({
-            content: '✅ Your report has been sent to the developers. Thank you!',
-          });
+          await channel.send({ embeds: [reportEmbed] });
+          await interaction.editReply({ content: '✅ Your report has been sent to the developers. Thank you!' });
         } catch (error) {
           console.error('Report submission error:', error);
-
-          await interaction.editReply({
-            content: '❌ An error occurred while submitting your report.',
-          });
+          await interaction.editReply({ content: '❌ An error occurred while submitting your report.' });
         }
 
         return;
       }
 
-      // SUGGESTION SUBMISSION
       if (interaction.customId === 'suggestion_modal') {
         if (!interaction.deferred && !interaction.replied) {
-          await interaction.deferReply({
-            ephemeral: true,
-          }).catch(() => {});
+          await interaction.deferReply({ ephemeral: true }).catch(() => {});
         }
 
-        const title = interaction.fields
-          .getTextInputValue('suggestion_title')
-          .trim();
-
-        const category = interaction.fields
-          .getTextInputValue('suggestion_category')
-          .trim();
-
-        const details = interaction.fields
-          .getTextInputValue('suggestion_details');
+        const title = interaction.fields.getTextInputValue('suggestion_title').trim();
+        const category = interaction.fields.getTextInputValue('suggestion_category').trim();
+        const details = interaction.fields.getTextInputValue('suggestion_details');
 
         try {
-          const channel = await interaction.client.channels
-            .fetch(SUGGESTIONS_CHANNEL_ID)
-            .catch(() => null);
+          const channel = await interaction.client.channels.fetch(SUGGESTIONS_CHANNEL_ID).catch(() => null);
 
           if (!channel) {
-            return await interaction.editReply({
-              content: '❌ Suggestions channel not found.',
-            });
+            return await interaction.editReply({ content: '❌ Suggestions channel not found.' });
           }
 
           const suggestionEmbed = new EmbedBuilder()
             .setTitle(`💡 [${category.toUpperCase()}] ${title}`)
             .setColor(0x00FF7F)
             .addFields(
-              {
-                name: 'Suggested By',
-                value: `${interaction.user.tag} (\`${interaction.user.id}\`)`,
-                inline: true,
-              },
-              {
-                name: 'Category',
-                value: category,
-                inline: true,
-              },
-              {
-                name: 'Details & Rationale',
-                value: details,
-              }
+              { name: 'Suggested By', value: `${interaction.user.tag} (\`${interaction.user.id}\`)`, inline: true },
+              { name: 'Category', value: category, inline: true },
+              { name: 'Details & Rationale', value: details }
             )
             .setTimestamp()
-            .setFooter({
-              text: 'Community Feedback — React below to vote!',
-            });
+            .setFooter({ text: 'Community Feedback — React below to vote!' });
 
-          const msg = await channel.send({
-            embeds: [suggestionEmbed],
-          });
-
+          const msg = await channel.send({ embeds: [suggestionEmbed] });
           await msg.react('👍');
           await msg.react('👎');
 
-          await interaction.editReply({
-            content: '✅ Your suggestion has been submitted and posted for community voting!',
-          });
+          await interaction.editReply({ content: '✅ Your suggestion has been submitted and posted for community voting!' });
         } catch (error) {
           console.error('Suggestion submission error:', error);
-
-          await interaction.editReply({
-            content: '❌ An error occurred while submitting your suggestion.',
-          });
+          await interaction.editReply({ content: '❌ An error occurred while submitting your suggestion.' });
         }
       }
     }
