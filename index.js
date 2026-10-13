@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 
 const {
@@ -85,6 +84,25 @@ async function getPrefix(guildId) {
   }
 }
 
+// Helper function to check if Anti-Link is enabled for the guild
+async function isAntiLinkEnabled(guildId) {
+  try {
+    const settings = await prisma.$queryRaw`
+      SELECT "antiLinkEnabled"
+      FROM "settings"
+      WHERE "guildId" = ${guildId}
+      LIMIT 1
+    `;
+
+    if (settings && settings.length > 0 && settings[0].antiLinkEnabled !== undefined && settings[0].antiLinkEnabled !== null) {
+      return Boolean(settings[0].antiLinkEnabled);
+    }
+    return true; // Default to enabled if not explicitly configured
+  } catch (error) {
+    return true; // Default fallback on error
+  }
+}
+
 // ==================================================
 // MESSAGE CREATE HANDLER
 // ==================================================
@@ -93,8 +111,9 @@ client.on(Events.MessageCreate, async (message) => {
   try {
     if (message.author.bot || !message.guild) return;
 
-    // 1. Anti-link / anti-invite filter
-    if (!message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) {
+    // 1. Anti-link / anti-invite filter (Respects database toggle & ManageMessages bypass)
+    const antiLinkActive = await isAntiLinkEnabled(message.guild.id);
+    if (antiLinkActive && !message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) {
       if (ALL_LINKS_REGEX.test(message.content)) {
         try {
           await message.delete();
@@ -312,6 +331,39 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
 
         return;
+      }
+
+      // ANTILINK TOGGLE COMMAND (/antilink on / off)
+      if (interaction.commandName === 'antilink') {
+        if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+          return await interaction.reply({
+            content: '❌ You need **Manage Server** permissions to use this command.',
+            ephemeral: true,
+          });
+        }
+
+        const status = interaction.options.getString('status'); // expected 'on' or 'off'
+        const enable = status === 'on';
+
+        try {
+          await prisma.$queryRaw`
+            INSERT INTO "settings" ("guildId", "antiLinkEnabled")
+            VALUES (${interaction.guild.id}, ${enable})
+            ON CONFLICT ("guildId")
+            DO UPDATE SET "antiLinkEnabled" = ${enable}
+          `;
+
+          return await interaction.reply({
+            content: `✅ Anti-link protection has been turned **${enable ? 'ON' : 'OFF'}** for this server.`,
+            ephemeral: true,
+          });
+        } catch (error) {
+          console.error('Antilink database error:', error);
+          return await interaction.reply({
+            content: '❌ Failed to update anti-link settings in the database.',
+            ephemeral: true,
+          });
+        }
       }
     }
 
