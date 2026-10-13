@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 
 const {
@@ -65,9 +64,6 @@ const SUGGESTIONS_CHANNEL_ID =
 
 const XENO_CHANNEL_ID = '1557772782979387473';
 
-const ALL_LINKS_REGEX =
-  /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(discord\.(gg|io|me|li)\/[^\s]+)/i;
-
 async function getPrefix(guildId) {
   try {
     const settings = await prisma.$queryRaw`
@@ -93,28 +89,7 @@ client.on(Events.MessageCreate, async (message) => {
   try {
     if (message.author.bot || !message.guild) return;
 
-    // 1. Anti-link / anti-invite filter
-    if (!message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) {
-      if (ALL_LINKS_REGEX.test(message.content)) {
-        try {
-          await message.delete();
-
-          const warning = await message.channel.send(
-            `⚠️ ${message.author}, posting links is not allowed in this server!`
-          );
-
-          setTimeout(() => {
-            warning.delete().catch(() => {});
-          }, 5000);
-
-          return;
-        } catch (error) {
-          console.error('Failed to delete link:', error);
-        }
-      }
-    }
-
-    // 2. CUSTOM XENO RESPONSE
+    // CUSTOM XENO RESPONSE
     // Only works in the configured channel when someone mentions the bot
     // and their message contains the word "xeno".
 
@@ -131,7 +106,7 @@ client.on(Events.MessageCreate, async (message) => {
       });
     }
 
-    // 3. AI CHAT
+    // AI CHAT
     // The bot answers when someone mentions it.
     if (openai && message.mentions.has(client.user)) {
       const cleanPrompt = message.content
@@ -196,7 +171,7 @@ client.on(Events.MessageCreate, async (message) => {
       });
     }
 
-    // 4. CHANNEL FORWARDING
+    // CHANNEL FORWARDING
 
     const SOURCE_CHANNEL_ID = '1466400064913150158';
     const DESTINATION_CHANNEL_ID = '1516293358635716610';
@@ -215,7 +190,7 @@ client.on(Events.MessageCreate, async (message) => {
       }
     }
 
-    // 5. PREFIX HANDLING
+    // PREFIX HANDLING
 
     const prefix = await getPrefix(message.guild.id);
 
@@ -223,7 +198,7 @@ client.on(Events.MessageCreate, async (message) => {
       // Prefix command logic
     }
 
-    // 6. EXISTING KEYWORD RESPONSE
+    // EXISTING KEYWORD RESPONSE
 
     if (message.content.toLowerCase().includes('karunosob')) {
       await message.reply({
@@ -234,7 +209,7 @@ client.on(Events.MessageCreate, async (message) => {
       });
     }
 
-    // 7. RANDOM REPLIES
+    // RANDOM REPLIES
 
     await handleRandomReply(message);
 
@@ -558,28 +533,4 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // ==================================================
 // START BOT
-// ==================================================
-
-async function main() {
-  console.log(chalk.magenta(`
-  ╔═══════════════════════════════════════╗
-  ║       ✨ AetherRise RPG Bot ✨         ║
-  ║      The World Awakens Once More      ║
-  ╚═══════════════════════════════════════╝
-  `));
-
-  await initDatabase();
-  await initRedis();
-  await loadCommands(client);
-  await loadEvents(client);
-
-  setInterval(() => {
-    sendGhostMessage(client);
-  }, 60 * 60 * 1000);
-
-  client.login(process.env.DISCORD_TOKEN);
-}
-
-main().catch(console.error);
-
-module.exports = { client };
+// =================================================
