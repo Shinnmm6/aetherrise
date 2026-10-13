@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { prisma } = require('../../database/client');
+const crypto = require('crypto');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -19,42 +20,38 @@ module.exports = {
 
   async execute(interaction) {
     if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-      return await interaction.reply({
+      return await interaction.editReply({
         content: 'You need **Manage Server** permissions to use this command.',
-        flags: MessageFlags.Ephemeral,
       });
     }
 
     const status = interaction.options.getString('status');
     const enable = status === 'on';
+    const generatedId = crypto.randomUUID();
 
     try {
-      // 1. Automatically ensure the column exists in the database
+      // 1. Ensure the column exists
       await prisma.$executeRaw`
         ALTER TABLE "settings" 
         ADD COLUMN IF NOT EXISTS "antiLinkEnabled" BOOLEAN DEFAULT true;
-      `;
+      `.catch(() => {});
 
-      // 2. Upsert the setting directly using raw SQL (bypasses Prisma schema validation)
+      // 2. Perform raw SQL UPSERT with a generated ID to prevent null constraint errors
       await prisma.$executeRaw`
-        INSERT INTO "settings" ("guildId", "antiLinkEnabled")
-        VALUES (${interaction.guild.id}, ${enable})
+        INSERT INTO "settings" ("id", "guildId", "prefix", "antiLinkEnabled")
+        VALUES (${generatedId}, ${interaction.guild.id}, '!', ${enable})
         ON CONFLICT ("guildId")
         DO UPDATE SET "antiLinkEnabled" = ${enable};
       `;
 
-      return await interaction.reply({
+      return await interaction.editReply({
         content: `Anti-link protection has been turned **${enable ? 'ON' : 'OFF'}** for this server.`,
-        flags: MessageFlags.Ephemeral,
       });
     } catch (error) {
       console.error('Antilink database error:', error);
-      if (!interaction.replied && !interaction.deferred) {
-        return await interaction.reply({
-          content: 'Failed to update anti-link settings in the database.',
-          flags: MessageFlags.Ephemeral,
-        });
-      }
+      return await interaction.editReply({
+        content: 'Failed to update anti-link settings in the database.',
+      });
     }
   },
 };
