@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { prisma } = require('../database/client');
+const { prisma } = require('../../database/client'); // Fixed relative path
 
 module.exports = {
   data: new SlashCommandBuilder()
