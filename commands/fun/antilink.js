@@ -29,47 +29,31 @@ module.exports = {
     const enable = status === 'on';
 
     try {
-      // Use Prisma upsert directly
-      await prisma.settings.upsert({
-        where: { guildId: interaction.guild.id },
-        update: { antiLinkEnabled: enable },
-        create: { guildId: interaction.guild.id, antiLinkEnabled: enable },
-      });
+      // 1. Automatically ensure the column exists in the database
+      await prisma.$executeRaw`
+        ALTER TABLE "settings" 
+        ADD COLUMN IF NOT EXISTS "antiLinkEnabled" BOOLEAN DEFAULT true;
+      `;
 
+      // 2. Upsert the setting directly using raw SQL (bypasses Prisma schema validation)
+      await prisma.$executeRaw`
+        INSERT INTO "settings" ("guildId", "antiLinkEnabled")
+        VALUES (${interaction.guild.id}, ${enable})
+        ON CONFLICT ("guildId")
+        DO UPDATE SET "antiLinkEnabled" = ${enable};
+      `;
+
+      return await interaction.reply({
+        content: `Anti-link protection has been turned **${enable ? 'ON' : 'OFF'}** for this server.`,
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch (error) {
+      console.error('Antilink database error:', error);
       if (!interaction.replied && !interaction.deferred) {
         return await interaction.reply({
-          content: `Anti-link protection has been turned **${enable ? 'ON' : 'OFF'}** for this server.`,
+          content: 'Failed to update anti-link settings in the database.',
           flags: MessageFlags.Ephemeral,
         });
-      }
-    } catch (error) {
-      // Fallback in case column hasn't synced with Prisma schema yet
-      try {
-        await prisma.$queryRawUnsafe(`
-          ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "antiLinkEnabled" BOOLEAN DEFAULT true;
-        `);
-
-        // Retry setting after adding column
-        await prisma.settings.upsert({
-          where: { guildId: interaction.guild.id },
-          update: { antiLinkEnabled: enable },
-          create: { guildId: interaction.guild.id, antiLinkEnabled: enable },
-        });
-
-        if (!interaction.replied && !interaction.deferred) {
-          return await interaction.reply({
-            content: `Anti-link protection has been turned **${enable ? 'ON' : 'OFF'}** for this server.`,
-            flags: MessageFlags.Ephemeral,
-          });
-        }
-      } catch (err) {
-        console.error('Antilink database error:', err);
-        if (!interaction.replied && !interaction.deferred) {
-          return await interaction.reply({
-            content: 'Failed to update anti-link settings in the database.',
-            flags: MessageFlags.Ephemeral,
-          });
-        }
       }
     }
   },
