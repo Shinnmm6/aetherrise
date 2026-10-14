@@ -111,6 +111,9 @@ client.on(Events.MessageCreate, async (message) => {
   try {
     if (message.author.bot || !message.guild) return;
 
+    // 🛑 Stop the bot from responding if @everyone or @here is used
+    if (message.mentions.everyone) return;
+
     // 1. Anti-link / anti-invite filter (Respects database toggle & ManageMessages bypass)
     const antiLinkActive = await isAntiLinkEnabled(message.guild.id);
     if (antiLinkActive && !message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) {
